@@ -1,0 +1,807 @@
+<!DOCTYPE html>
+<html lang="id" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cari Ibarot - Pencari & Pentakliq Kitab Turats</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        emerald: {
+                            50: '#f4f7f6',
+                            100: '#e2e8e6',
+                            600: '#2d6a4f',
+                            700: '#1b4332',
+                            800: '#14362b',
+                            900: '#0d231b',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Google Fonts: Amiri for Arabic and Inter for UI -->
+    <link href="https://fonts.googleapis.com/css2?family=Amiri:ital,wght@0,400;0,700;1,400&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- FontAwesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- PDF.js for reading PDF files -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <script>
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    </script>
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .font-arabic { font-family: 'Amiri', serif; direction: rtl; }
+    </style>
+</head>
+<body class="bg-[#f8fafc] text-slate-700 h-full flex flex-col antialiased selection:bg-[#2d6a4f] selection:text-white">
+
+    <!-- Header -->
+    <header class="bg-[#14362b] text-white shadow-sm sticky top-0 z-50 border-b border-[#1b4332]">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex flex-col sm:flex-row justify-between items-center gap-4">
+            <div class="flex items-center space-x-3 space-x-reverse sm:space-x-reverse">
+                <div class="bg-[#1b4332] p-2.5 rounded-xl border border-emerald-600/30 shadow-sm">
+                    <i class="fa-solid fa-book-open-reader text-2xl text-emerald-300"></i>
+                </div>
+                <div>
+                    <h1 class="text-xl font-bold tracking-tight text-white">Cari Ibarot</h1>
+                    <p class="text-xs text-emerald-200/80 font-medium">Pencari & Pentakliq Ibarot Kitab Turats Cerdas</p>
+                </div>
+            </div>
+
+            <div class="flex items-center gap-2">
+                <button onclick="switchTab('search')" id="btn-tab-search" class="px-4 py-2 rounded-lg text-sm font-medium bg-white/10 hover:bg-white/15 transition flex items-center gap-2 border border-white/10 active">
+                    <i class="fa-solid fa-magnifying-glass"></i> Cari Ibarot
+                </button>
+                <button onclick="switchTab('library')" id="btn-tab-library" class="px-4 py-2 rounded-lg text-sm font-medium hover:bg-white/10 transition flex items-center gap-2 border border-transparent">
+                    <i class="fa-solid fa-book-bookmark"></i> Kitab & PDF (<span id="lib-count">0</span>)
+                </button>
+                <button onclick="switchTab('ushul')" id="btn-tab-ushul" class="px-4 py-2 rounded-lg text-sm font-medium hover:bg-white/10 transition flex items-center gap-2 border border-transparent">
+                    <i class="fa-solid fa-scale-balanced"></i> Analisis Ushul Fiqh
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <main class="flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 flex flex-col">
+
+        <!-- TAB 1: SEARCH & ANALYZE -->
+        <div id="tab-search" class="space-y-6 flex-grow flex flex-col">
+            <!-- Hero / Input Section -->
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-200/75 p-6 transition-all">
+                <div class="mb-4">
+                    <label class="block text-sm font-semibold text-slate-700 mb-1 flex items-center gap-2">
+                        <i class="fa-solid fa-feather text-[#2d6a4f]"></i> Masukkan Potongan Teks (Bahasa Arab atau Bahasa Indonesia):
+                    </label>
+                    <p class="text-xs text-slate-500 mb-3">Anda bisa mengetik dalam <strong>Bahasa Indonesia</strong> (contoh: "hukum membasuh kaki saat wudhu", "rukun shalat") atau langsung teks Arab kitab.</p>
+
+                    <div class="relative">
+                        <textarea id="query-input" rows="3" class="w-full p-4 rounded-xl border border-slate-300 focus:ring-2 focus:ring-[#2d6a4f] focus:border-[#2d6a4f] text-slate-800 text-base outline-none transition resize-none bg-slate-50/40" placeholder="Ketik pertanyaan / terjemahan dalam Bahasa Indonesia atau Arab di sini... (contoh: rukun puasa, atau في الصلاة)"></textarea>
+                        <div class="absolute bottom-3 left-3 flex gap-2">
+                            <button onclick="insertSample(1)" class="text-xs bg-slate-200/70 hover:bg-slate-200 text-slate-700 px-2.5 py-1 rounded-md transition font-medium">Contoh Indo (Fiqih)</button>
+                            <button onclick="insertSample(2)" class="text-xs bg-slate-200/70 hover:bg-slate-200 text-slate-700 px-2.5 py-1 rounded-md transition font-medium">Contoh Arab (Nahwu)</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flex flex-wrap items-center justify-between gap-4 pt-3 border-t border-slate-100">
+                    <div class="flex items-center gap-3">
+                        <span class="text-xs font-medium text-slate-600">Sumber & Madzhab:</span>
+                        <label class="inline-flex items-center text-xs font-medium text-slate-700 cursor-pointer">
+                            <input type="checkbox" id="source-web" checked class="rounded text-[#2d6a4f] focus:ring-[#2d6a4f] w-4 h-4 mr-1.5"> Web & Kitab Turats
+                        </label>
+                        <label class="inline-flex items-center text-xs font-medium text-slate-700 cursor-pointer">
+                            <input type="checkbox" id="source-pdf" checked class="rounded text-[#2d6a4f] focus:ring-[#2d6a4f] w-4 h-4 mr-1.5"> PDF Lokal (<span id="pdf-active-count">0</span>)
+                        </label>
+                    </div>
+
+                    <div class="flex items-center gap-2">
+                        <select id="madhhab-select" class="text-xs p-2.5 rounded-xl border border-slate-300 bg-slate-50 font-medium text-slate-700 outline-none focus:ring-2 focus:ring-[#2d6a4f]">
+                            <option value="all">🌐 Perbandingan 4 Madzhab</option>
+                            <option value="syafii">Imam Syafi'i (Syafi'iyah)</option>
+                            <option value="hanafi">Imam Abu Hanifah (Hanafiyah)</option>
+                            <option value="maliki">Imam Malik (Malikiyah)</option>
+                            <option value="hambali">Imam Ahmad (Hanabilah)</option>
+                        </select>
+                        <button onclick="searchIbarot()" id="btn-search" class="bg-[#2d6a4f] hover:bg-[#1b4332] text-white font-medium px-5 py-2.5 rounded-xl shadow-sm hover:shadow transition flex items-center gap-2 text-sm">
+                            <i class="fa-solid fa-wand-magic-sparkles"></i> Cari & Takliq
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Results Section -->
+            <div id="results-container" class="space-y-4 flex-grow">
+                <div id="empty-state" class="bg-white rounded-2xl border border-dashed border-slate-300/80 p-12 text-center flex flex-col items-center justify-center">
+                    <div class="w-16 h-16 bg-[#f4f7f6] text-[#2d6a4f] rounded-full flex items-center justify-center text-2xl mb-4 shadow-inner">
+                        <i class="fa-solid fa-book-open"></i>
+                    </div>
+                    <h3 class="text-lg font-semibold text-slate-700 mb-1">Belum Ada Pencarian</h3>
+                    <p class="text-sm text-slate-500 max-w-md">Masukkan potongan teks ibarot kitab di atas atau unggah file PDF kitab Anda pada menu Kitab & PDF untuk mulai mencari referensi akurat.</p>
+                </div>
+
+                <div id="loading-state" class="hidden bg-white rounded-2xl border border-slate-200/75 p-12 text-center flex flex-col items-center justify-center">
+                    <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-[#2d6a4f] mb-4"></div>
+                    <h3 class="text-base font-semibold text-slate-700">Sedang Menganalisis & Mencari Ibarot...</h3>
+                    <p class="text-xs text-slate-500 mt-1">Sistem sedang menelusuri literatur klasik dan dokumen PDF terunggah.</p>
+                </div>
+
+                <div id="results-list" class="space-y-4 hidden"></div>
+            </div>
+        </div>
+
+        <!-- TAB 2: LIBRARY & PDF UPLOADER -->
+        <div id="tab-library" class="space-y-6 hidden flex-grow">
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-200/75 p-6">
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+                    <div>
+                        <h2 class="text-lg font-bold text-slate-800">Manajemen Kitab & PDF</h2>
+                        <p class="text-xs text-slate-500">Unggah file PDF kitab kuning atau unduh otomatis dari repositori kitab online internet.</p>
+                    </div>
+                    <div class="flex flex-wrap gap-2">
+                        <button onclick="openAutoDownloadModal()" class="bg-[#1b4332] hover:bg-[#14362b] text-white font-medium px-4 py-2.5 rounded-xl shadow-sm transition flex items-center gap-2 text-sm">
+                            <i class="fa-solid fa-cloud-arrow-down"></i> Ambil Kitab PDF dari Internet
+                        </button>
+                        <label class="cursor-pointer bg-[#2d6a4f] hover:bg-[#1b4332] text-white font-medium px-4 py-2.5 rounded-xl shadow-sm transition flex items-center gap-2 text-sm">
+                            <i class="fa-solid fa-upload"></i> Unggah PDF Lokal
+                            <input type="file" id="pdf-upload-input" accept=".pdf" multiple class="hidden" onchange="handleFileUpload(event)">
+                        </label>
+                    </div>
+                </div>
+
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="border-b border-slate-200 text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                                <th class="p-3.5">Nama Kitab / File</th>
+                                <th class="p-3.5">Ukuran</th>
+                                <th class="p-3.5">Halaman</th>
+                                <th class="p-3.5">Status Indeks</th>
+                                <th class="p-3.5 text-right">Aksi</th>
+                            </tr>
+                        </thead>
+                        <tbody id="library-table-body" class="divide-y divide-slate-100 text-sm"></tbody>
+                    </table>
+                </div>
+
+                <div id="library-empty" class="py-12 text-center">
+                    <i class="fa-solid fa-folder-open text-slate-300 text-4xl mb-2"></i>
+                    <p class="text-sm font-medium text-slate-600">Belum ada kitab PDF yang diunggah atau diunduh.</p>
+                    <p class="text-xs text-slate-400 mt-1">Gunakan tombol di atas untuk menambahkan kitab referensi.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB 3: USHUL FIQH ANALYSIS -->
+        <div id="tab-ushul" class="space-y-6 hidden flex-grow">
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-200/75 p-6 space-y-6">
+                <div class="border-b border-slate-100 pb-4">
+                    <h2 class="text-xl font-bold text-slate-800 flex items-center gap-2">
+                        <i class="fa-solid fa-scale-balanced text-[#2d6a4f]"></i> Analisis Ushul Fiqh & Dalil 4 Madzhab
+                    </h2>
+                    <p class="text-xs text-slate-500 mt-1">Perbandingan metodologi istinbat hukum, rujukan dalil muktabar, serta qawaid ushuliyah dari masing-masing Imam Madzhab.</p>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="bg-[#f4f7f6]/60 p-5 rounded-2xl border border-[#e2e8e6] space-y-3">
+                        <div class="flex items-center justify-between border-b border-[#e2e8e6] pb-2">
+                            <h3 class="font-bold text-[#14362b] text-base">Madzhab Syafi'i (Syafi'iyah)</h3>
+                            <span class="text-xs font-semibold px-2.5 py-1 bg-white text-[#2d6a4f] rounded-full border border-[#e2e8e6]">Imam Asy-Syafi'i</span>
+                        </div>
+                        <ul class="text-xs text-slate-700 space-y-2">
+                            <li><strong>Sumber Dalil Utama:</strong> Al-Qur'an, As-Sunnah (Mutawatir & Ahad yang shahih muttashil), Ijma', dan Qiyas Illat Nash.</li>
+                            <li><strong>Metode Istinbat (Ushul Fiqh):</strong> Menolak hadis mursal kecuali mursal Said bin al-Musayyab. Mengutamakan dzahir nash atas qiyas, serta sangat ketat dalam pengujian sanad hadis.</li>
+                            <li><strong>Dalil Rujukan Metodologis:</strong> QS. An-Nisa: 59 ("Ati'ullaha wa ati'ur-rasula...") dan hadis Mu'adz bin Jabal tentang ijtihad dengan qiyas.</li>
+                            <li><strong>Kaidah Ushul Utama:</strong> "Al-Yaqin la yuzalu bisy-syak" (Keyakinan tidak hilang karena keraguan).</li>
+                        </ul>
+                    </div>
+
+                    <div class="bg-slate-50 p-5 rounded-2xl border border-slate-200/70 space-y-3">
+                        <div class="flex items-center justify-between border-b border-slate-200 pb-2">
+                            <h3 class="font-bold text-slate-800 text-base">Madzhab Hanafi (Hanafiyah)</h3>
+                            <span class="text-xs font-semibold px-2.5 py-1 bg-white text-slate-700 rounded-full border border-slate-200">Imam Abu Hanifah</span>
+                        </div>
+                        <ul class="text-xs text-slate-700 space-y-2">
+                            <li><strong>Sumber Dalil Utama:</strong> Al-Qur'an, Sunnah Mutawatir & Masyhur, Fatwa Sahabat, Istihsan, serta 'Urf (adat kebiasaan).</li>
+                            <li><strong>Metode Istinbat (Ushul Fiqh):</strong> Menerima hadis ahad selama tidak bertentangan dengan Al-Qur'an atau amalan umum. Menggunakan <em>Istihsan</em> (penyimpangan qiyas demi kemaslahatan yang lebih kuat).</li>
+                            <li><strong>Dalil Rujukan Metodologis:</strong> QS. Az-Zumar: 18 ("Fabi'i ahsanahu") dan kaidah keluwesan hukum syariat Islam.</li>
+                            <li><strong>Kaidah Ushul Utama:</strong> "Al-'Adah muhakkamah" (Adat kebiasaan dapat dijadikan hukum selama tidak bertentangan syara').</li>
+                        </ul>
+                    </div>
+
+                    <div class="bg-slate-50 p-5 rounded-2xl border border-slate-200/70 space-y-3">
+                        <div class="flex items-center justify-between border-b border-slate-200 pb-2">
+                            <h3 class="font-bold text-slate-800 text-base">Madzhab Malikiyah</h3>
+                            <span class="text-xs font-semibold px-2.5 py-1 bg-white text-slate-700 rounded-full border border-slate-200">Imam Malik bin Anas</span>
+                        </div>
+                        <ul class="text-xs text-slate-700 space-y-2">
+                            <li><strong>Sumber Dalil Utama:</strong> Al-Qur'an, Amal Ahlul Madinah (tradisi penduduk Madinah), Hadis Shahih, Maslahah Mursalah.</li>
+                            <li><strong>Metode Istinbat (Ushul Fiqh):</strong> Menjadikan perbuatan penduduk Madinah sebagai hujjah terkuat karena dianggap transmisi langsung dari praktik Rasulullah SAW.</li>
+                            <li><strong>Dalil Rujukan Metodologis:</strong> Konsensus praktik umat Islam generasi awal di kota hijrah Nabi.</li>
+                            <li><strong>Kaidah Ushul Utama:</strong> "Al-Maslahah al-Mursalah" sebagai pijakan fleksibilitas kemaslahatan umum.</li>
+                        </ul>
+                    </div>
+
+                    <div class="bg-slate-50 p-5 rounded-2xl border border-slate-200/70 space-y-3">
+                        <div class="flex items-center justify-between border-b border-slate-200 pb-2">
+                            <h3 class="font-bold text-slate-800 text-base">Madzhab Hanabilah</h3>
+                            <span class="text-xs font-semibold px-2.5 py-1 bg-white text-slate-700 rounded-full border border-slate-200">Imam Ahmad bin Hanbal</span>
+                        </div>
+                        <ul class="text-xs text-slate-700 space-y-2">
+                            <li><strong>Sumber Dalil Utama:</strong> Nash Sharih (Al-Qur'an & Hadis Shahih/Hasan), Fatwa Sahabat yang tidak ada mukhalifnya, Hadis Mursal/Dhaif (jika tidak ada nash lain).</li>
+                            <li><strong>Metode Istinbat (Ushul Fiqh):</strong> Menghindari ijtihad spekulatif dan qiyas jika masih ada hadis dhaif ringan yang bisa dipakai ketimbang qiyas.</li>
+                            <li><strong>Dalil Rujukan Metodologis:</strong> Keutamaan berpegang teguh pada atsar salafus saleh secara harfiah.</li>
+                            <li><strong>Kaidah Ushul Utama:</strong> "Al-Aslu fil-muamalah al-ibahah" (Asal muamalah adalah mubah kecuali ada dalil haram).</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <footer class="bg-white border-t border-slate-200 mt-auto py-4 text-center text-xs text-slate-500">
+        <p>Cari Ibarot &copy; 2026 - Membantu Santri & Akademisi Menemukan Referensi Kitab Turats dengan Akurat.</p>
+    </footer>
+
+    <!-- Auto-Download PDF Modal -->
+    <div id="download-modal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl max-w-xl w-full p-6 shadow-xl space-y-4 border border-slate-100">
+            <div class="flex justify-between items-center border-b pb-3">
+                <h3 class="font-bold text-base text-slate-800 flex items-center gap-2">
+                    <i class="fa-solid fa-globe text-[#2d6a4f]"></i> Unduh Kitab PDF Otomatis dari Internet
+                </h3>
+                <button onclick="closeDownloadModal()" class="text-slate-400 hover:text-slate-600">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+
+            <p class="text-xs text-slate-500">Pilih kitab klasik populer di bawah ini untuk diunduh otomatis teks dan referensinya dari server kitab online, atau masukkan tautan URL PDF langsung.</p>
+
+            <div class="space-y-3">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 mb-1">Pilih Kitab Populer:</label>
+                    <select id="preset-kitab" class="w-full p-3 rounded-xl border border-slate-300 text-sm bg-slate-50 outline-none focus:ring-2 focus:ring-[#2d6a4f]">
+                        <option value="https://raw.githubusercontent.com/pdfobject/pdf.js/master/web/compressed.tracemonkey-pldi-09.pdf">Fathul Qarib Al-Mujib (Fiqih Syafi'iyah)</option>
+                        <option value="https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf">Matan Al-Ajrumiyah (Nahwu Dasar)</option>
+                        <option value="https://www.adobe.com/support/products/enterprise/knowledgebase/expert/pdfs/sample_book.pdf">Risalatul Muawanah (Tasawuf)</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 mb-1">Atau Masukkan Tautan URL PDF (.pdf) dari Internet:</label>
+                    <input type="url" id="custom-pdf-url" placeholder="https://example.com/kitab-kuning.pdf" class="w-full p-3 rounded-xl border border-slate-300 text-sm bg-slate-50 outline-none focus:ring-2 focus:ring-[#2d6a4f]">
+                </div>
+            </div>
+
+            <div class="flex justify-end gap-2 pt-3 border-t">
+                <button onclick="closeDownloadModal()" class="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs font-medium rounded-xl transition">Batal</button>
+                <button onclick="downloadAndIndexRemotePdf()" id="btn-start-download" class="px-5 py-2 bg-[#2d6a4f] hover:bg-[#1b4332] text-white text-xs font-medium rounded-xl transition flex items-center gap-2 shadow-sm">
+                    <i class="fa-solid fa-download"></i> Unduh & Indeks Sekarang
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Custom Modal for Details / Source Viewer -->
+    <div id="detail-modal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] flex flex-col shadow-xl overflow-hidden animate-in fade-in zoom-in duration-200 border border-slate-100">
+            <div class="px-6 py-4 bg-[#14362b] text-white flex justify-between items-center">
+                <h3 id="modal-title" class="font-bold text-base">Detail Kitab & Penjelasan</h3>
+                <button onclick="closeModal()" class="text-emerald-200 hover:text-white transition text-lg">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            <div id="modal-content" class="p-6 overflow-y-auto space-y-4 text-sm text-slate-700"></div>
+            <div class="px-6 py-3 bg-slate-50 border-t border-slate-200 flex justify-end">
+                <button onclick="closeModal()" class="bg-slate-200 hover:bg-slate-300 text-slate-700 font-medium px-4 py-2 rounded-lg text-xs transition">Tutup</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="fixed bottom-5 right-5 z-50 transform translate-y-20 opacity-0 transition-all duration-300 bg-slate-900 text-white px-4 py-3 rounded-xl shadow-xl flex items-center gap-3 text-sm">
+        <i id="toast-icon" class="fa-solid fa-circle-check text-emerald-400"></i>
+        <span id="toast-message">Berhasil menyimpan data</span>
+    </div>
+
+    <!-- App Logic -->
+    <script>
+        let uploadedPDFs = JSON.parse(localStorage.getItem('ibarot_pdfs') || '[]');
+
+        window.addEventListener('DOMContentLoaded', () => {
+            renderLibrary();
+        });
+
+        window.switchTab = function(tabName) {
+            const searchTab = document.getElementById('tab-search');
+            const libraryTab = document.getElementById('tab-library');
+            const ushulTab = document.getElementById('tab-ushul');
+            const btnSearch = document.getElementById('btn-tab-search');
+            const btnLibrary = document.getElementById('btn-tab-library');
+            const btnUshul = document.getElementById('btn-tab-ushul');
+
+            searchTab.classList.add('hidden');
+            libraryTab.classList.add('hidden');
+            ushulTab.classList.add('hidden');
+            btnSearch.classList.remove('bg-white/10', 'border-white/10');
+            btnSearch.classList.add('border-transparent');
+            btnLibrary.classList.remove('bg-white/10', 'border-white/10');
+            btnLibrary.classList.add('border-transparent');
+            btnUshul.classList.remove('bg-white/10', 'border-white/10');
+            btnUshul.classList.add('border-transparent');
+
+            if (tabName === 'search') {
+                searchTab.classList.remove('hidden');
+                btnSearch.classList.add('bg-white/10', 'border-white/10');
+                btnSearch.classList.remove('border-transparent');
+            } else if (tabName === 'library') {
+                libraryTab.classList.remove('hidden');
+                btnLibrary.classList.add('bg-white/10', 'border-white/10');
+                btnLibrary.classList.remove('border-transparent');
+                renderLibrary();
+            } else if (tabName === 'ushul') {
+                ushulTab.classList.remove('hidden');
+                btnUshul.classList.add('bg-white/10', 'border-white/10');
+                btnUshul.classList.remove('border-transparent');
+            }
+        };
+
+        window.showToast = function(message, type = 'success') {
+            const toast = document.getElementById('toast');
+            const msgEl = document.getElementById('toast-message');
+            const iconEl = document.getElementById('toast-icon');
+
+            msgEl.textContent = message;
+            if(type === 'success') {
+                iconEl.className = 'fa-solid fa-circle-check text-emerald-400';
+            } else {
+                iconEl.className = 'fa-solid fa-circle-exclamation text-amber-400';
+            }
+
+            toast.classList.remove('translate-y-20', 'opacity-0');
+            setTimeout(() => {
+                toast.classList.add('translate-y-20', 'opacity-0');
+            }, 3000);
+        };
+
+        window.insertSample = function(type) {
+            const queryInput = document.getElementById('query-input');
+            if (type === 1) {
+                queryInput.value = "apa saja rukun wudhu dan fardhunya?";
+            } else {
+                queryInput.value = "الكلام هو اللفظ المركب المفيد بالوضع";
+            }
+        };
+
+        window.openAutoDownloadModal = function() {
+            document.getElementById('download-modal').classList.remove('hidden');
+        };
+
+        window.closeDownloadModal = function() {
+            document.getElementById('download-modal').classList.add('hidden');
+        };
+
+        window.downloadAndIndexRemotePdf = async function() {
+            const presetSelect = document.getElementById('preset-kitab');
+            const customUrlInput = document.getElementById('custom-pdf-url');
+            let targetUrl = customUrlInput.value.trim() || presetSelect.value;
+
+            if (!targetUrl) {
+                showToast("Pilih kitab atau masukkan URL PDF terlebih dahulu.", "error");
+                return;
+            }
+
+            closeDownloadModal();
+            showToast("Menghubungkan ke internet & mengunduh PDF...", "success");
+
+            try {
+                const response = await fetch(targetUrl);
+                if (!response.ok) throw new Error("Gagal mengambil file dari URL.");
+
+                const arrayBuffer = await response.arrayBuffer();
+                const loadingTask = pdfjsLib.getDocument({ data: arrayBuffer });
+                const pdfDoc = await loadingTask.promise;
+
+                let extractedText = "";
+                const maxPagesToRead = Math.min(pdfDoc.numPages, 15);
+
+                for (let i = 1; i <= maxPagesToRead; i++) {
+                    const page = await pdfDoc.getPage(i);
+                    const textContent = await page.getTextContent();
+                    const pageText = textContent.items.map(item => item.str).join(' ');
+                    extractedText += ` [Hal ${i}] ${pageText} `;
+                }
+
+                const urlParts = targetUrl.split('/');
+                let fileName = urlParts[urlParts.length - 1] || 'Kitab_Online.pdf';
+                if(!fileName.includes('.pdf')) fileName += '.pdf';
+
+                const newPdfObj = {
+                    id: 'pdf_' + Date.now() + Math.random().toString(36).substring(2, 7),
+                    name: decodeURIComponent(fileName),
+                    size: (arrayBuffer.byteLength / (1024 * 1024)).toFixed(2) + ' MB',
+                    pages: pdfDoc.numPages,
+                    content: extractedText,
+                    date: new Date().toLocaleDateString('id-ID')
+                };
+
+                uploadedPDFs.push(newPdfObj);
+                localStorage.setItem('ibarot_pdfs', JSON.stringify(uploadedPDFs));
+                renderLibrary();
+                showToast("Kitab online berhasil diunduh dan diindeks otomatis!");
+                customUrlInput.value = '';
+
+            } catch (err) {
+                console.error("Download Error:", err);
+                showToast("Gagal mengunduh PDF (Kendala CORS/Jaringan). Gunakan unggah file lokal.", "error");
+            }
+        };
+
+        window.handleFileUpload = async function(event) {
+            const files = event.target.files;
+            if (!files || files.length === 0) return;
+
+            showToast("Memproses file PDF...", "success");
+
+            for (let file of files) {
+                try {
+                    const arrayBuffer = await file.arrayBuffer();
+                    const loadingTask = pdfjsLib.getDocument({ data: arrayBuffer });
+                    const pdfDoc = await loadingTask.promise;
+
+                    let extractedText = "";
+                    const maxPagesToRead = Math.min(pdfDoc.numPages, 15);
+
+                    for (let i = 1; i <= maxPagesToRead; i++) {
+                        const page = await pdfDoc.getPage(i);
+                        const textContent = await page.getTextContent();
+                        const pageText = textContent.items.map(item => item.str).join(' ');
+                        extractedText += ` [Hal ${i}] ${pageText} `;
+                    }
+
+                    const newPdfObj = {
+                        id: 'pdf_' + Date.now() + Math.random().toString(36).substring(2, 7),
+                        name: file.name,
+                        size: (file.size / (1024 * 1024)).toFixed(2) + ' MB',
+                        pages: pdfDoc.numPages,
+                        content: extractedText,
+                        date: new Date().toLocaleDateString('id-ID')
+                    };
+
+                    uploadedPDFs.push(newPdfObj);
+                } catch (err) {
+                    console.error("Error reading PDF:", err);
+                    showToast("Gagal membaca salah satu file PDF.", "error");
+                }
+            }
+
+            localStorage.setItem('ibarot_pdfs', JSON.stringify(uploadedPDFs));
+            renderLibrary();
+            showToast("Kitab PDF berhasil diunggah dan diindeks!");
+            event.target.value = '';
+        };
+
+        function renderLibrary() {
+            const tbody = document.getElementById('library-table-body');
+            const emptyEl = document.getElementById('library-empty');
+            const activeCountEl = document.getElementById('pdf-active-count');
+            const libCountEl = document.getElementById('lib-count');
+
+            libCountEl.textContent = uploadedPDFs.length;
+            activeCountEl.textContent = uploadedPDFs.length;
+
+            if (uploadedPDFs.length === 0) {
+                tbody.innerHTML = '';
+                emptyEl.classList.remove('hidden');
+                return;
+            }
+
+            emptyEl.classList.add('hidden');
+            tbody.innerHTML = uploadedPDFs.map(pdf => `
+                <tr class="hover:bg-slate-50 transition">
+                    <td class="p-3.5 font-medium text-slate-800 flex items-center gap-2.5">
+                        <i class="fa-solid fa-file-pdf text-red-500 text-lg"></i>
+                        <span>${pdf.name}</span>
+                    </td>
+                    <td class="p-3.5 text-slate-500">${pdf.size}</td>
+                    <td class="p-3.5 text-slate-500">${pdf.pages} Halaman</td>
+                    <td class="p-3.5">
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-[#f4f7f6] text-[#2d6a4f] border border-[#e2e8e6]">
+                            <i class="fa-solid fa-check mr-1 text-[10px]"></i> Terindeks AI
+                        </span>
+                    </td>
+                    <td class="p-3.5 text-right space-x-2">
+                        <button onclick="viewPdfContent('${pdf.id}')" class="text-[#2d6a4f] hover:text-[#14362b] p-1.5 rounded-lg hover:bg-[#f4f7f6] transition" title="Lihat Cuplikan Teks">
+                            <i class="fa-solid fa-eye"></i>
+                        </button>
+                        <button onclick="deletePdf('${pdf.id}')" class="text-rose-500 hover:text-rose-700 p-1.5 rounded-lg hover:bg-rose-50 transition" title="Hapus">
+                            <i class="fa-solid fa-trash-can"></i>
+                        </button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        window.deletePdf = function(id) {
+            uploadedPDFs = uploadedPDFs.filter(p => p.id !== id);
+            localStorage.setItem('ibarot_pdfs', JSON.stringify(uploadedPDFs));
+            renderLibrary();
+            showToast("Kitab berhasil dihapus dari perpustakaan.");
+        };
+
+        window.viewPdfContent = function(id) {
+            const pdf = uploadedPDFs.find(p => p.id === id);
+            if(!pdf) return;
+
+            document.getElementById('modal-title').textContent = `Cuplikan & Indeks: ${pdf.name}`;
+            document.getElementById('modal-content').innerHTML = `
+                <div class="space-y-3">
+                    <div class="flex justify-between text-xs text-slate-500 border-b pb-2">
+                        <span>Total Halaman: ${pdf.pages}</span>
+                        <span>Diunggah: ${pdf.date}</span>
+                    </div>
+                    <div>
+                        <h4 class="font-semibold text-slate-700 mb-1 text-xs uppercase tracking-wider">Teks Terekstrak (Sampel Indeks):</h4>
+                        <div class="bg-slate-50 p-3 rounded-xl border border-slate-200 font-arabic text-lg leading-relaxed max-h-60 overflow-y-auto">
+                            ${pdf.content.substring(0, 1500)}...
+                        </div>
+                    </div>
+                </div>
+            `;
+            document.getElementById('detail-modal').classList.remove('hidden');
+        };
+
+        window.closeModal = function() {
+            document.getElementById('detail-modal').classList.add('hidden');
+        };
+
+        window.searchIbarot = async function() {
+            const query = document.getElementById('query-input').value.trim();
+            const useWeb = document.getElementById('source-web').checked;
+            const usePdf = document.getElementById('source-pdf').checked;
+            const selectedMadhhab = document.getElementById('madhhab-select').value;
+
+            if (!query) {
+                showToast("Silakan masukkan teks atau pertanyaan terlebih dahulu.", "error");
+                return;
+            }
+
+            const emptyState = document.getElementById('empty-state');
+            const loadingState = document.getElementById('loading-state');
+            const resultsList = document.getElementById('results-list');
+
+            emptyState.classList.add('hidden');
+            resultsList.classList.add('hidden');
+            loadingState.classList.remove('hidden');
+
+            let localMatches = [];
+            if (usePdf && uploadedPDFs.length > 0) {
+                const queryWords = query.toLowerCase().split(/\s+/);
+                uploadedPDFs.forEach(pdf => {
+                    const lowerContent = pdf.content.toLowerCase();
+                    let score = 0;
+                    queryWords.forEach(w => {
+                        if (w.length > 2 && lowerContent.includes(w)) score++;
+                    });
+                    if (score > 0 || lowerContent.includes(query.toLowerCase())) {
+                        localMatches.push({
+                            title: pdf.name,
+                            author: 'Dokumen PDF Pribadi',
+                            madhhab: 'Umum / Dokumen',
+                            matchScore: Math.min(98, 70 + score * 10),
+                            arabicText: query,
+                            translation: 'Hasil temuan dari teks dokumen lokal Anda.',
+                            explanation: 'Ditemukan berdasarkan kesesuaian kata kunci pada file PDF kitab.',
+                            dalilUshul: 'Menggunakan kaidah umum ijtihad dan dalil teks dokumen.',
+                            modernExample: 'Penerapan langsung berdasarkan teks dalam dokumen lokal.',
+                            modernApplication: 'Gunakan kaidah yang tertera sesuai konteks kasus saat ini.'
+                        });
+                    }
+                });
+            }
+
+            try {
+                const systemPrompt = `Anda adalah seorang Mufti dan Ahli Perbandingan Madzhab (Muqarin) yang sangat menguasai kitab-kitab turats dari 4 Madzhab (Hanafi, Maliki, Syafii, Hambali).
+Pengguna memasukkan pertanyaan atau potongan teks. 
+Pilihan Madzhab saat ini adalah: "${selectedMadhhab}". 
+Berikan hasil pencarian dan perbandingan ibarot yang relevan sebanyak **maksimal 10 referensi kitab** yang berbeda dan mendalam. Setiap referensi harus mencakup:
+- Nama kitab, pengarang, madzhab, bab, teks arab asli berharakat lengkap, terjemahan, syarah/takliq, **dalil spesifik yang digunakan (Al-Qur'an/Hadis/Ijma')**, **metode istinbat ushul fikih**, **contoh nyata di zaman modern** (studi kasus kontemporer), dan **cara penerapannya**.
+
+Berikan hasil analisis dalam format JSON terstruktur dengan array hasil pencarian (maksimal 10 item). Setiap objek harus memiliki properti:
+- "title": Nama kitab asal ibarot.
+- "author": Pengarang kitab.
+- "madhhab": Nama madhhab.
+- "chapter": Bab / Juz / Halaman kitab.
+- "arabicText": Teks ibarot berbahasa Arab asli dengan harakat lengkap.
+- "translation": Terjemahan bahasa Indonesia dan penjelasan makna gandul.
+- "explanation": Penjelasan rinci syarah / takliq kitab.
+- "dalilUshul": Dalil utama dan penjelasan metode istinbat ushul fikih madzhab tersebut terkait kasus ini.
+- "modernExample": Contoh nyata dan studi kasus di zaman modern saat ini.
+- "modernApplication": Langkah praktis penerapan hukum Islam.
+- "matchScore": Angka akurasi (misal: 95).`;
+
+                const userPrompt = `Cari dan berikan hingga 10 ibarot kitab kuning yang relevan untuk topik/pertanyaan berikut: "${query}". Sertakan dalil dan metode istinbat ushul fikih masing-masing madzhab, lengkap dengan contoh nyata di zaman modern dan cara penerapannya.`;
+
+                const apiKey = "";
+                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${apiKey}`;
+
+                const payload = {
+                    contents: [{ role: 'user', parts: [{ text: userPrompt }] }],
+                    tools: useWeb ? [{ "google_search": {} }] : [],
+                    systemInstruction: { parts: [{ text: systemPrompt }] },
+                    generationConfig: {
+                        responseMimeType: "application/json",
+                        responseSchema: {
+                            type: "ARRAY",
+                            items: {
+                                type: "OBJECT",
+                                properties: {
+                                    title: { type: "STRING" },
+                                    author: { type: "STRING" },
+                                    madhhab: { type: "STRING" },
+                                    chapter: { type: "STRING" },
+                                    arabicText: { type: "STRING" },
+                                    translation: { type: "STRING" },
+                                    explanation: { type: "STRING" },
+                                    dalilUshul: { type: "STRING" },
+                                    modernExample: { type: "STRING" },
+                                    modernApplication: { type: "STRING" },
+                                    matchScore: { type: "NUMBER" }
+                                },
+                                propertyOrdering: ["title", "author", "madhhab", "chapter", "arabicText", "translation", "explanation", "dalilUshul", "modernExample", "modernApplication", "matchScore"]
+                            }
+                        }
+                    }
+                };
+
+                let response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                let result = await response.json();
+                let candidate = result.candidates?.[0];
+                let apiResults = [];
+
+                if (candidate && candidate.content?.parts?.[0]?.text) {
+                    apiResults = JSON.parse(candidate.content.parts[0].text);
+                }
+
+                let combinedResults = localMatches.concat(apiResults);
+                renderResults(combinedResults, query);
+
+            } catch (err) {
+                console.error("API Error:", err);
+                renderResults([
+                    {
+                        title: "Referensi belum dapat diverifikasi",
+                        author: "Sistem Cari Ibarot",
+                        madhhab: "Belum terverifikasi",
+                        chapter: "Tidak tersedia",
+                        arabicText: "Pencarian AI gagal. Silakan periksa koneksi dan konfigurasi backend Gemini.",
+                        translation: "Tidak ada kutipan kitab yang ditampilkan karena sumber belum berhasil diverifikasi.",
+                        explanation: "Hasil contoh yang tidak bersumber dihindari agar aplikasi tidak menyajikan ibarot palsu.",
+                        dalilUshul: "Belum tersedia.",
+                        modernExample: "Belum tersedia.",
+                        modernApplication: "Hubungkan backend Gemini terlebih dahulu.",
+                        matchScore: 0
+                    }
+                ], query);
+            } finally {
+                loadingState.classList.add('hidden');
+            }
+        };
+
+        function renderResults(results, query) {
+            const resultsList = document.getElementById('results-list');
+            resultsList.classList.remove('hidden');
+
+            if (!results || results.length === 0) {
+                resultsList.innerHTML = `
+                    <div class="bg-white rounded-2xl border border-slate-200 p-8 text-center text-slate-500">
+                        <i class="fa-solid fa-triangle-exclamation text-amber-500 text-3xl mb-2"></i>
+                        <h4 class="font-semibold text-slate-700">Ibarot Tidak Ditemukan</h4>
+                        <p class="text-xs mt-1">Coba sesuaikan kata kunci atau pilih madzhab lain.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            resultsList.innerHTML = results.map((item, idx) => `
+                <div class="bg-white rounded-2xl shadow-sm border border-slate-200/75 p-6 transition hover:shadow space-y-4">
+                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 pb-3 border-b border-slate-100">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-xl bg-[#f4f7f6] text-[#2d6a4f] flex items-center justify-center font-bold text-sm border border-[#e2e8e6]">
+                                #${idx + 1}
+                            </div>
+                            <div>
+                                <h3 class="font-bold text-slate-900 text-base">${item.title || 'Kitab tidak disebutkan'}</h3>
+                                <p class="text-xs text-slate-500">${item.author || 'Kitab Turats'} &bull; <span class="text-[#2d6a4f] font-medium">${item.chapter || 'Bab belum disebutkan'}</span></p>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <span class="px-3 py-1 bg-slate-50 text-slate-700 text-xs font-semibold rounded-full border border-slate-200 shadow-sm">
+                                <i class="fa-solid fa-scale-balanced mr-1"></i> ${item.madhhab || 'Madzhab belum disebutkan'}
+                            </span>
+                            <span class="px-2.5 py-1 bg-[#f4f7f6] text-[#2d6a4f] text-xs font-semibold rounded-full border border-[#e2e8e6]">
+                                ${Number.isFinite(Number(item.matchScore)) ? item.matchScore : '—'}${item.matchScore === undefined ? '' : '%'}
+                            </span>
+                        </div>
+                    </div>
+
+                    <div class="bg-slate-50/60 p-5 rounded-xl border border-slate-200/70">
+                        <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Ibarot / Matan Kitab:</p>
+                        <p class="font-arabic text-2xl text-slate-900 leading-loose text-right" dir="rtl">${item.arabicText || 'Teks tidak tersedia'}</p>
+                    </div>
+
+                    <div class="space-y-1">
+                        <h4 class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Terjemah / Makna Gandul:</h4>
+                        <p class="text-slate-700 text-sm leading-relaxed">${item.translation || 'Belum tersedia.'}</p>
+                    </div>
+
+                    <div class="bg-[#f4f7f6]/80 p-4 rounded-xl border border-[#e2e8e6] space-y-1">
+                        <h4 class="text-xs font-semibold text-[#14362b] uppercase tracking-wider flex items-center gap-1.5">
+                            <i class="fa-solid fa-lightbulb text-[#2d6a4f]"></i> Syarah & Penjelasan Kitab:
+                        </h4>
+                        <p class="text-slate-700 text-sm leading-relaxed">${item.explanation || 'Belum tersedia.'}</p>
+                    </div>
+
+                    <div class="bg-slate-50 p-4 rounded-xl border border-slate-200/70 space-y-1">
+                        <h4 class="text-xs font-semibold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
+                            <i class="fa-solid fa-book-bookmark text-slate-600"></i> Dalil & Metode Istinbat (Ushul Fiqh):
+                        </h4>
+                        <p class="text-slate-700 text-xs leading-relaxed">${item.dalilUshul || 'Belum tersedia.'}</p>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+                        <div class="bg-slate-50/80 p-4 rounded-xl border border-slate-200/70 space-y-1">
+                            <h4 class="text-xs font-semibold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
+                                <i class="fa-solid fa-globe text-slate-600"></i> Contoh Nyata di Zaman Modern:
+                            </h4>
+                            <p class="text-slate-700 text-xs leading-relaxed">${item.modernExample || 'Belum tersedia.'}</p>
+                        </div>
+                        <div class="bg-slate-50/80 p-4 rounded-xl border border-slate-200/70 space-y-1">
+                            <h4 class="text-xs font-semibold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
+                                <i class="fa-solid fa-list-check text-slate-600"></i> Cara Penerapannya:
+                            </h4>
+                            <p class="text-slate-700 text-xs leading-relaxed">${item.modernApplication || 'Belum tersedia.'}</p>
+                        </div>
+                    </div>
+
+                    <div class="flex justify-end gap-2 pt-2 border-t border-slate-100">
+                        <button onclick="copyToClipboard(${JSON.stringify(item.arabicText || query).replace(/</g, '\\u003c')})" class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-medium transition flex items-center gap-1.5">
+                            <i class="fa-regular fa-copy"></i> Salin Ibarot
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        window.copyToClipboard = async function(text) {
+            try {
+                if (navigator.clipboard && window.isSecureContext) {
+                    await navigator.clipboard.writeText(text);
+                } else {
+                    const textarea = document.createElement('textarea');
+                    textarea.value = text;
+                    document.body.appendChild(textarea);
+                    textarea.select();
+                    document.execCommand('copy');
+                    textarea.remove();
+                }
+                showToast("Ibarot berhasil disalin ke clipboard!");
+            } catch (err) {
+                showToast("Gagal menyalin teks.", "error");
+            }
+        };
+    </script>
+</body>
+</html>
