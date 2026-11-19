@@ -617,7 +617,6 @@ window.searchIbarot = async function() {
    if (result.status === 'fulfilled') combined.push(...result.value.items);
    else failures.push((useShamela && index === 0 ? 'Shamela' : 'Turath')+': '+(result.reason.message || result.reason));
   });
-    });
   combined = deduplicatePassages(combined);
   renderResults(combined,query);
   if (!combined.length) {
