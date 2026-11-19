@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="id" class="h-full">
 <head>
@@ -137,7 +136,11 @@ mark.search-highlight{
    <div class="flex flex-wrap gap-4 text-xs">
     <label>
      <input type="checkbox" id="source-web" checked>
-     Web & Kitab Turats
+     Shamela
+    </label>
+    <label>
+     <input type="checkbox" id="source-turath" checked>
+     Turath (kitab online)
     </label>
     <label>
      <input type="checkbox" id="source-pdf" checked>
@@ -294,11 +297,11 @@ mark.search-highlight{
  class="fixed bottom-5 right-4 z-[60] bg-slate-900 text-white px-4 py-3 rounded-xl shadow-lg text-sm opacity-0 pointer-events-none transition">
  <span id="toast-message"></span>
 </div>
-
 <script>
 /* PENGATURAN SERVER */
 const SHAMELA_API = 'https://cari-ibarot-api.ruangkonsultasijarakosta.workers.dev';
 const AI_API = 'https://cari-ibarot-ai.ruangkonsultasijarakosta.workers.dev';
+const TURATH_API = 'https://cari-ibarot-turath.ruangkonsultasijarakosta.workers.dev';
 
 /* PENYIMPANAN */
 let uploadedPDFs = [];
@@ -582,146 +585,59 @@ function searchLocalPDF(query) {
 window.searchIbarot = async function() {
  const query = document.getElementById('query-input').value.trim();
  const usePDF = document.getElementById('source-pdf').checked;
- const useWeb = document.getElementById('source-web').checked;
+ const useShamela = document.getElementById('source-web').checked;
+ const useTurath = document.getElementById('source-turath').checked;
  const madhhab = document.getElementById('madhhab-select').value;
 
- if (!query) {
-  showToast('Masukkan kata kunci pencarian terlebih dahulu.');
-  return;
+ if (!query) { showToast('Masukkan kata kunci pencarian terlebih dahulu.'); return; }
+ if ((useShamela || useTurath) && !/[\u0600-\u06FF]/.test(query)) {
+  showToast('Pencarian kitab online harus menggunakan kata kunci Arab.'); return;
  }
-
- if (useWeb && !/[\u0600-\u06FF]/.test(query)) {
-  showToast('Pencarian Shamela harus menggunakan kata kunci Arab.');
-  return;
- }
-
- if (!useWeb && !usePDF) {
-  showToast('Pilih sumber pencarian Web atau PDF Lokal.');
-  return;
+ if (!useShamela && !useTurath && !usePDF) {
+  showToast('Pilih minimal satu sumber pencarian.'); return;
  }
 
  const empty = document.getElementById('empty-state');
  const loading = document.getElementById('loading-state');
  const results = document.getElementById('results-list');
-
- empty.classList.add('hidden');
- results.classList.add('hidden');
- loading.classList.remove('hidden');
-
+ empty.classList.add('hidden'); results.classList.add('hidden'); loading.classList.remove('hidden');
  const searchButton = document.getElementById('btn-search');
  searchButton.disabled = true;
-
  let combined = [];
+ const failures = [];
+ const scopes = {all:'fiqh-comparative',syafii:'fiqh-shafii',hanafi:'fiqh-hanafi',maliki:'fiqh-maliki',hambali:'fiqh-hanbali'};
 
  try {
   if (usePDF) combined = combined.concat(searchLocalPDF(query));
-
-  if (useWeb) {
-   const scopes = {
-    all:'fiqh-comparative',
-    syafii:'fiqh-shafii',
-    hanafi:'fiqh-hanafi',
-    maliki:'fiqh-maliki',
-    hambali:'fiqh-hanbali'
-   };
-
-   const response = await fetch(SHAMELA_API,{
-    method:'POST',
-    headers:{
-     'Content-Type':'application/json',
-     'Accept':'application/json, text/event-stream'
-    },
-    body:JSON.stringify({
-     query:query,
-     scope:scopes[madhhab] || 'fiqh-comparative',
-     limit:5
-    })
-   });
-
-   const raw = await response.text();
-
-   if (!response.ok) {
-    throw new Error('Server pencarian merespons HTTP '+response.status+'. '+raw.slice(0,200));
-   }
-
-   let envelope;
-   try {
-    envelope = JSON.parse(raw);
-   } catch(e) {
-    throw new Error('Format respons server pencarian bukan JSON.');
-   }
-
-   if (envelope.error) {
-    throw new Error(envelope.error.message || String(envelope.error));
-   }
-
-   const rpc = envelope.result || envelope;
-
-   if (rpc.isError) {
-    const message = (rpc.content || []).map(x=>x.text || '').join('\n');
-    throw new Error(message || 'Pencarian Shamela gagal.');
-   }
-
-   let data = rpc.structuredContent || rpc.structured_content || null;
-
-   if (!data && Array.isArray(rpc.content)) {
-    const textPart = rpc.content.find(x=>x.type==='text' && x.text);
-    if (textPart) {
-     try { data = JSON.parse(textPart.text); } catch(e) {}
-    }
-   }
-
-   if (!data) throw new Error('Data hasil Shamela tidak dikenali.');
-
-   const passages = Array.isArray(data.passages) ? data.passages : [];
-
-   const shamelaResults = passages.map(hit => ({
-    title:hit.book || 'Kitab tidak disebutkan',
-    author:hit.author || 'Pengarang tidak disebutkan',
-    madhhab:'Hasil pencarian Shamela',
-    chapter:'Jilid/Halaman: '+(hit.printedPage || 'tidak tersedia'),
-    arabicText:hit.arabic || '',
-    translation:'Belum diterjemahkan. Tekan tombol Analisis AI.',
-    explanation:'Kecocokan ditemukan pada: '+(hit.matchedIn || 'tidak diketahui'),
-    dalilUshul:'Data edisi: '+[hit.edition,hit.editor,hit.publisher].filter(Boolean).join(' • '),
-    modernExample:'Belum dianalisis.',
-    modernApplication:'Belum dianalisis.',
-    matchScore:hit.matchScore ?? null,
-    sourceUrl:typeof hit.sourceUrl === 'string' &&
-     /^https:\/\/qurangallery\.com\//.test(hit.sourceUrl)
-     ? hit.sourceUrl : ''
-   }));
-
-   combined = combined.concat(shamelaResults);
-
-   if (data.relaxedToTokens) {
-    showToast('Pencarian frasa diperluas menjadi pencarian kata.');
-   }
-  }
-
+  const jobs = [];
+  if (useShamela) jobs.push(fetchShamelaForTerm(query,scopes[madhhab] || 'fiqh-comparative').then(items => ({source:'Shamela',items})));
+  if (useTurath) jobs.push(fetchTurathForTerm(query).then(items => ({source:'Turath',items})));
+  const settled = await Promise.allSettled(jobs);
+  settled.forEach((result,index) => {
+   if (result.status === 'fulfilled') combined.push(...result.value.items);
+   else failures.push((useShamela && index === 0 ? 'Shamela' : 'Turath')+': '+(result.reason.message || result.reason));
+  });
+    });
+  combined = deduplicatePassages(combined);
   renderResults(combined,query);
-
   if (!combined.length) {
-   showToast('Ibarot tidak ditemukan. Coba kata kunci lain.');
+   const detail = failures.length ? ' '+failures.join(' | ') : '';
+   showToast('Ibarot tidak ditemukan.'+detail);
+  } else if (failures.length) {
+   showToast('Sebagian sumber gagal. Hasil dari sumber lain tetap ditampilkan.');
+   const note = document.createElement('div');
+   note.className = 'rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800';
+   note.textContent = 'Catatan sumber: '+failures.join(' | ');
+   results.prepend(note);
   }
-
  } catch(error) {
   console.error(error);
   results.classList.remove('hidden');
-  results.innerHTML = `
-   <div class="bg-white border border-amber-200 rounded-xl p-5">
-    <h3 class="font-bold text-amber-700">Pencarian belum berhasil</h3>
-    <p class="text-sm mt-2">${escapeHTML(error.message || error)}</p>
-    <p class="text-xs text-slate-500 mt-2">
-     Periksa koneksi dan konfigurasi Worker pencarian Shamela.
-    </p>
-   </div>`;
+  results.innerHTML = `<div class="bg-white border border-amber-200 rounded-xl p-5"><h3 class="font-bold text-amber-700">Pencarian belum berhasil</h3><p class="text-sm mt-2">${escapeHTML(error.message || error)}</p></div>`;
  } finally {
-  loading.classList.add('hidden');
-  searchButton.disabled = false;
+  loading.classList.add('hidden'); searchButton.disabled = false;
  }
 };
-
 /* MENAMPILKAN HASIL */
 window.renderResults = function(items,query) {
  const results = document.getElementById('results-list');
@@ -1011,6 +927,32 @@ function extractSearchTerms(data) {
  }
  return [...new Set(collected.map(v => {
   if (typeof v === 'string') return v.trim();
+  if (v && typeof v === 'object') return String(v.query || v.term || v.keyword || v.arabic || '').trim();
+  return '';
+ }).filter(v => v && /[\u0600-\u06FF]/.test(v)))]
+  .slice(0,8);
+ }
+ function extractSearchTerms(data) {
+ // Kompatibel dengan seluruh nama properti yang dipakai Worker AI Cari Ibarot,
+ // termasuk searchTermsArabic dan searchPhrasesArabic dari action research.
+ const sources = [data, data && data.research, data && data.data, data && data.result,
+                  data && data.analysis, data && data.output];
+ const keys = [
+  'searchTermsArabic', 'searchPhrasesArabic',
+  'searchTerms', 'arabicSearchTerms', 'search_terms', 'arabic_terms',
+  'keywordsArabic', 'arabicKeywords', 'keywords', 'terms', 'queries'
+ ];
+ const collected = [];
+ for (const source of sources) {
+  if (!source || typeof source !== 'object') continue;
+  for (const key of keys) {
+   const value = source[key];
+   if (Array.isArray(value)) collected.push(...value);
+   else if (typeof value === 'string' && value.trim()) collected.push(...value.split(/\r?\n|[,;؛]/));
+  }
+ }
+ return [...new Set(collected.map(v => {
+  if (typeof v === 'string') return v.trim();
   if (v && typeof v === 'object') {
    return String(v.termArabic || v.searchTermArabic || v.phraseArabic || v.term || v.query || v.keyword || v.text || '').trim();
   }
@@ -1035,53 +977,17 @@ function renderResearchTerms(terms) {
  ).join('');
 }
 
-function wait(ms) {
- return new Promise(resolve => setTimeout(resolve, ms));
-}
-
 async function fetchShamelaForTerm(term, scope) {
- // Satu percobaan untuk 429: jangan mengulang permintaan yang sudah ditolak.
- // Beberapa versi Worker lama membungkus upstream 429 sebagai HTTP 502,
- // sehingga status di dalam body juga harus diperiksa.
- let response;
- let raw = '';
- for (let attempt = 0; attempt < 2; attempt++) {
-  response = await fetch(SHAMELA_API, {
-   method:'POST',
-   headers:{'Content-Type':'application/json','Accept':'application/json, text/event-stream'},
-   body:JSON.stringify({query:term, scope, limit:5})
-  });
-  raw = await response.text();
-
-  let errorBody = null;
-  if (!response.ok) {
-   try { errorBody = JSON.parse(raw); } catch (_) {}
-   const upstreamStatus = Number(errorBody?.status || errorBody?.error?.upstreamStatus || 0);
-   if (response.status === 429 || upstreamStatus === 429) {
-    const limited = new Error('Shamela sedang membatasi permintaan (HTTP 429). Pencarian dihentikan agar tidak menambah pembatasan. Tunggu beberapa saat, lalu coba satu pencarian dahulu.');
-    limited.rateLimited = true;
-    throw limited;
-   }
-   if ([502,503,504].includes(response.status) && attempt === 0) {
-    await wait(3000);
-    continue;
-   }
-   throw new Error('Pencarian "'+term+'" gagal (HTTP '+response.status+'): '+raw.slice(0,220));
-  }
-  break;
- }
-
+ const response = await fetch(SHAMELA_API, {
+  method:'POST',
+  headers:{'Content-Type':'application/json','Accept':'application/json, text/event-stream'},
+  body:JSON.stringify({query:term, scope, limit:5})
+ });
+ const raw = await response.text();
+ if (!response.ok) throw new Error('Pencarian "'+term+'" gagal (HTTP '+response.status+'): '+raw.slice(0,180));
  let envelope;
  try { envelope = JSON.parse(raw); } catch (_) { throw new Error('Respons Shamela untuk kata kunci "'+term+'" bukan JSON.'); }
- if (envelope.error) {
-  const upstreamStatus = Number(envelope.status || envelope.error?.status || envelope.error?.upstreamStatus || 0);
-  if (upstreamStatus === 429) {
-   const limited = new Error('Shamela sedang membatasi permintaan (HTTP 429). Pencarian dihentikan agar tidak menambah pembatasan. Tunggu beberapa saat, lalu coba satu pencarian dahulu.');
-   limited.rateLimited = true;
-   throw limited;
-  }
-  throw new Error(envelope.error.message || String(envelope.error));
- }
+ if (envelope.error) throw new Error(envelope.error.message || String(envelope.error));
  const rpc = envelope.result || envelope;
  if (rpc.isError) {
   const msg = (rpc.content || []).map(x=>x.text || '').join('\n');
@@ -1111,6 +1017,61 @@ async function fetchShamelaForTerm(term, scope) {
  }));
 }
 
+function collectTurathHits(value, depth=0) {
+ if (!value || depth > 5) return [];
+ if (Array.isArray(value)) {
+  const direct = value.filter(item => item && typeof item === 'object' && !Array.isArray(item));
+  if (direct.some(item => ['text','arabic','arabicText','content','snippet','excerpt','passage','pageText','page_text'].some(k => typeof item[k] === 'string'))) return direct;
+  return value.flatMap(item => collectTurathHits(item,depth+1));
+ }
+ if (typeof value === 'object') {
+  for (const key of ['results','passages','items','hits','matches','data','books']) {
+   if (value[key]) {
+    const found = collectTurathHits(value[key],depth+1);
+    if (found.length) return found;
+   }
+  }
+  if (['text','arabic','arabicText','content','snippet','excerpt','passage','pageText','page_text'].some(k => typeof value[k] === 'string')) return [value];
+ }
+ return [];
+}
+
+async function fetchTurathForTerm(term) {
+ const response = await fetch(TURATH_API, {
+  method:'POST', headers:{'Content-Type':'application/json','Accept':'application/json'},
+  body:JSON.stringify({query:term,limit:5})
+ });
+ const raw = await response.text();
+ let envelope;
+ try { envelope = JSON.parse(raw); } catch (_) { throw new Error('Respons Turath bukan JSON: '+raw.slice(0,160)); }
+ if (!response.ok || envelope.ok === false || envelope.error) {
+  throw new Error(envelope.error || ('HTTP '+response.status));
+ }
+ let data = envelope.data || envelope.result || envelope;
+ if (typeof data === 'string') { try { data = JSON.parse(data); } catch (_) { data = {text:data}; } }
+ const hits = collectTurathHits(data);
+ return hits.map((hit,index) => {
+  const arabic = [hit.arabicText,hit.arabic,hit.text,hit.pageText,hit.page_text,hit.passage,hit.snippet,hit.excerpt,hit.content].find(v => typeof v === 'string' && v.trim()) || '';
+  const book = hit.bookTitle || hit.book_title || hit.book || hit.title || hit.work || hit.name || 'Kitab Turath';
+  const author = hit.authorName || hit.author_name || hit.author || hit.writer || 'Pengarang tidak disebutkan';
+  const volume = hit.volume || hit.volumeNumber || hit.volume_number || hit.juz || hit.juz_number || '';
+  const page = hit.page || hit.pageNumber || hit.page_number || hit.pageNo || '';
+  const locator = [volume ? 'Jilid '+volume : '',page ? 'Halaman '+page : ''].filter(Boolean).join(' / ') || hit.location || hit.reference || 'Lokasi tidak tersedia';
+  const link = hit.url || hit.sourceUrl || hit.source_url || hit.link || '';
+  return {
+   title:String(book), author:String(author), madhhab:'Hasil pencarian Turath',
+   chapter:locator, arabicText:arabic,
+   translation:'Belum diterjemahkan. Tekan tombol Analisis AI.',
+   explanation:'Ditemukan di Turath melalui kata kunci: '+term+'. Periksa kembali halaman sumber.',
+   dalilUshul:hit.edition || hit.publisher || hit.category || 'Koleksi Turath',
+   modernExample:'Belum dianalisis.', modernApplication:'Belum dianalisis.',
+   matchScore:hit.score ?? hit.matchScore ?? null,
+   sourceUrl:typeof link === 'string' && /^https:\/\//.test(link) ? link : '',
+   searchTerm:term, sourceId:'turath_'+(hit.id || hit.bookId || hit.book_id || index)
+  };
+ }).filter(item => item.arabicText.trim());
+}
+
 function deduplicatePassages(passages) {
  const seen = new Set();
  return passages.filter(item => {
@@ -1124,10 +1085,9 @@ function deduplicatePassages(passages) {
  });
 }
 
-function renderTarjihReport(data, question, framing, count, sourcePassages = []) {
+function renderTarjihReport(data, question, framing, count) {
  const target = document.getElementById('tarjih-report');
  const content = document.getElementById('tarjih-report-content');
- window.currentReferencePassages = sourcePassages;
  target.classList.remove('hidden');
  const sections = [
   ['Rumusan masalah', firstText(data,['issueFraming','problemFraming','problem','rumusanMasalah','issue']) || framing],
@@ -1148,100 +1108,24 @@ function renderTarjihReport(data, question, framing, count, sourcePassages = [])
    <h4 class="font-bold text-amber-800 mb-2">Respons AI</h4>
    <pre class="whitespace-pre-wrap text-xs text-slate-700">${escapeHTML(JSON.stringify(data,null,2))}</pre>
   </section>`;
-
- // Daftar rujukan dibangun dari metadata hasil pencarian, bukan dari klaim AI.
- const references = sourcePassages.map((item, index) => {
-  const sourceUrl = /^https?:\/\//i.test(item.sourceUrl || '') ? item.sourceUrl : '';
-  const referenceId = item.id || ('passage_' + (index + 1));
-  const book = item.book || 'Kitab tidak disebutkan';
-  const author = item.author || 'Pengarang tidak disebutkan';
-  const page = item.page || 'Halaman/jilid tidak tersedia';
-  const madhhab = item.madhhab || 'Atribusi mazhab belum dipastikan';
-  return `
-   <details class="rounded-xl border border-slate-200 bg-white p-3">
-    <summary class="list-none cursor-pointer flex flex-wrap items-center justify-between gap-2">
-     <span class="min-w-0">
-      <span class="block text-xs font-bold text-teal-700">${escapeHTML(referenceId)}</span>
-      <span class="block font-semibold text-slate-800">${escapeHTML(book)}</span>
-      <span class="block text-xs text-slate-500">${escapeHTML(author)} · ${escapeHTML(page)}</span>
-     </span>
-     <span class="inline-flex items-center gap-2 rounded-lg bg-teal-700 px-3 py-2 text-xs font-semibold text-white">
-      <i class="fa-solid fa-book-open"></i> Rujuk Sumber
-     </span>
-    </summary>
-    <div class="mt-3 border-t pt-3 space-y-3">
-     <p class="text-xs text-slate-500">Atribusi: ${escapeHTML(madhhab)}</p>
-     <div class="rounded-lg bg-slate-50 border p-3">
-      <p class="text-xs font-bold text-teal-700 mb-2">NUKILAN ARAB</p>
-      <p class="font-arabic text-right text-lg leading-loose text-slate-800" dir="rtl">${escapeHTML(item.arabicText || 'Teks Arab tidak tersedia.')}</p>
-     </div>
-     <div>
-      <p class="text-xs font-bold text-teal-700 mb-1">TERJEMAHAN</p>
-      <p class="text-sm text-slate-600 whitespace-pre-line">${escapeHTML(item.translation || 'Terjemahan belum tersedia.')}</p>
-      <button type="button" onclick="window.translateReference(${index}, this)" class="mt-2 inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-3 py-2 text-xs font-semibold text-white hover:bg-indigo-700">
-       <i class="fa-solid fa-language"></i> Terjemahkan Rujukan
-      </button>
-      <div id="reference-translation-${index}" class="hidden mt-3 rounded-lg border border-indigo-100 bg-indigo-50/60 p-3 text-sm text-slate-700 whitespace-pre-line"></div>
-     </div>
-     ${sourceUrl ? `<a href="${escapeHTML(sourceUrl)}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-2 rounded-lg bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-800 hover:bg-amber-100"><i class="fa-solid fa-arrow-up-right-from-square"></i> Buka Sumber Digital</a>` : '<p class="text-xs text-amber-700">Tautan sumber digital tidak tersedia. Verifikasi nukilan melalui kitab cetak atau salinan digital yang sesuai.</p>'}
-    </div>
-   </details>`;
- }).join('');
- const referencesSection = sourcePassages.length ? `
-  <section class="rounded-xl border border-teal-100 bg-teal-50/40 p-4 space-y-3">
-   <div>
-    <h4 class="font-bold text-teal-800">Rujukan Nukilan per Sumber</h4>
-    <p class="text-xs text-slate-500 mt-1">Buka setiap rujukan untuk memeriksa teks Arab, identitas kitab, dan tautan digital jika tersedia. Kesesuaian atribusi mazhab tetap perlu diperiksa pada konteks kitab.</p>
-   </div>
-   ${references}
-  </section>` : '';
  content.innerHTML = `
   <div class="rounded-xl bg-teal-50 border border-teal-100 p-3 text-xs text-teal-900">
    Pertanyaan: ${escapeHTML(question)}<br>
    Ibarot unik yang diperiksa: ${count}
-  </div>${html}${referencesSection}${rawFallback}
+  </div>${html}${rawFallback}
   <p class="text-xs text-slate-500">Periksa kembali teks, konteks, atribusi madzhab, dan data halaman pada kitab asli. Jika sumber yang ditemukan belum cukup, kesimpulan AI tidak boleh dianggap sebagai tarjih yang pasti.</p>`;
 }
 
-// Simpan nukilan yang sedang ditampilkan agar tombol terjemah memakai teks sumber yang tepat.
-window.currentReferencePassages = [];
-window.translateReference = async function(index, button) {
- const item = window.currentReferencePassages[index];
- const output = document.getElementById('reference-translation-' + index);
- if (!item || !item.arabicText) { showToast('Teks Arab rujukan tidak tersedia.'); return; }
- if (!output) return;
- const original = button.innerHTML;
- button.disabled = true;
- button.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Menerjemahkan...';
- output.classList.remove('hidden');
- output.textContent = 'AI sedang menerjemahkan teks Arab...';
- try {
-  const result = await callAI('translate', {
-   arabicText: item.arabicText,
-   book: item.book || item.title || '',
-   author: item.author || '',
-   context: item.page || item.chapter || ''
-  });
-  const translated = firstText(result, ['translation','translatedText','indonesian','text','result']);
-  if (!translated) throw new Error('Worker AI tidak mengembalikan hasil terjemahan.');
-  output.textContent = translated;
- } catch (error) {
-  output.textContent = 'Terjemahan gagal: ' + (error.message || String(error));
- } finally {
-  button.disabled = false;
-  button.innerHTML = original;
- }
-};
-
 window.researchAndTarjih = async function() {
  const question = document.getElementById('research-question').value.trim();
- const useWeb = document.getElementById('source-web').checked;
+ const useShamela = document.getElementById('source-web').checked;
+ const useTurath = document.getElementById('source-turath').checked;
  const usePDF = document.getElementById('source-pdf').checked;
  const madhhab = document.getElementById('madhhab-select').value;
  const button = document.getElementById('btn-research');
  const report = document.getElementById('tarjih-report');
  if (!question) { showToast('Tuliskan masalah fikih dalam bahasa Indonesia.'); return; }
- if (!useWeb && !usePDF) { showToast('Pilih sumber Web atau PDF Lokal.'); return; }
+ if (!useShamela && !useTurath && !usePDF) { showToast('Pilih minimal satu sumber pencarian.'); return; }
 
  button.disabled = true;
  button.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1"></i> Memproses...';
@@ -1261,23 +1145,19 @@ window.researchAndTarjih = async function() {
   const scopes = {all:'fiqh-comparative',syafii:'fiqh-shafii',hanafi:'fiqh-hanafi',maliki:'fiqh-maliki',hambali:'fiqh-hanbali'};
   let passages = [];
   let failures = [];
-  if (useWeb) {
-   setResearchStatus('Tahap 2/3: Mencari ibarot Shamela dengan '+terms.length+' kata kunci Arab...');
-   // Antrean serial dengan jeda. Jika server mengirim 429, hentikan seluruh
-   // antrean: jangan mengirim kata kunci berikutnya ke layanan yang sedang membatasi.
-   for (let i=0; i<terms.length; i++) {
-    const term = terms[i];
-    try {
-     const found = await fetchShamelaForTerm(term, scopes[madhhab] || 'fiqh-comparative');
-     passages.push(...found);
-    } catch (error) {
-     failures.push(term+': '+(error.message || String(error)));
-     if (error.rateLimited) break;
-    }
-    if (i < terms.length - 1) await wait(5000);
-   }
-   if (failures.some(message => message.includes('HTTP 429'))) {
-    throw new Error('Pencarian dihentikan karena server Shamela membatasi permintaan (HTTP 429). Ini bukan berarti ibarot tidak ada. Tunggu 15–30 menit sebelum mencoba lagi, dan mulai dengan satu kata kunci.\n\nRincian: '+failures.join('\n'));
+  if (useShamela || useTurath) {
+   const activeSources = [useShamela ? 'Shamela' : '',useTurath ? 'Turath' : ''].filter(Boolean).join(' + ');
+   setResearchStatus('Tahap 2/3: Mencari ibarot melalui '+activeSources+' dengan '+terms.length+' kata kunci Arab...');
+   // Satu istilah diproses pada satu waktu agar tidak membanjiri layanan sumber.
+   for (const term of terms) {
+    const jobs = [];
+    if (useShamela) jobs.push(fetchShamelaForTerm(term,scopes[madhhab] || 'fiqh-comparative').then(items=>({source:'Shamela',items})));
+    if (useTurath) jobs.push(fetchTurathForTerm(term).then(items=>({source:'Turath',items})));
+    const settled = await Promise.allSettled(jobs);
+    settled.forEach((result,j) => {
+     if (result.status === 'fulfilled') passages.push(...result.value.items);
+     else failures.push(term+' ('+(useShamela && j===0 ? 'Shamela' : 'Turath')+'): '+result.reason.message);
+    });
    }
   }
   if (usePDF) {
@@ -1311,7 +1191,7 @@ window.researchAndTarjih = async function() {
    searchTerms:terms,
    passages:sourcePassages
   });
-  renderTarjihReport(tarjih,question,framing,passages.length,sourcePassages);
+  renderTarjihReport(tarjih,question,framing,passages.length);
   setResearchStatus(
    'Selesai. '+passages.length+' ibarot unik dikirim untuk dianalisis.'+
    (failures.length ? '\nSebagian pencarian gagal:\n'+failures.join('\n') : '')
