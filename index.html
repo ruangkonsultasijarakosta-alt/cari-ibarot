@@ -6,10 +6,23 @@
 <title>Cari Ibarot</title>
 <script src="https://cdn.tailwindcss.com"></script>
 <style>
-body{font-family:Inter,system-ui,sans-serif;background:#f3f8f8;color:#334155}
-.ar{font-family:serif;direction:rtl;line-height:2.1}
+:root{color-scheme:light}
+body{font-family:Inter,system-ui,-apple-system,sans-serif;background:#f3f7f8;color:#243746}
+.ar{font-family:Georgia,'Times New Roman',serif;direction:rtl;line-height:2.15}
+button{transition:background .18s,transform .18s}
+button:active{transform:scale(.985)}
 button:disabled{opacity:.55;cursor:not-allowed}
 .hidden{display:none!important}
+.panel{background:#fff;border:1px solid #e1eaec;border-radius:18px;box-shadow:0 5px 22px #153b4b0a}
+.eyebrow{font-size:11px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;color:#0b7184}
+.section-title{font-size:17px;font-weight:800;color:#183b49}
+.result-card{background:white;border:1px solid #dce8ea;border-radius:16px;padding:17px;box-shadow:0 4px 16px #163c4a08}
+.result-meta{font-size:12px;color:#647782}
+.report-block{background:#fff;border:1px solid #dce8ea;border-radius:15px;padding:16px}
+.report-block h3{font-size:15px;font-weight:800;color:#075b70;margin-bottom:8px}
+.quote-card{background:#f8fbfb;border:1px solid #e0ebed;border-radius:13px;padding:13px;margin-top:9px}
+.pill{display:inline-flex;align-items:center;border-radius:999px;background:#e8f5f6;color:#075b70;padding:4px 10px;font-size:11px;font-weight:700}
+@media(max-width:480px){main{padding:12px!important}.result-card,.report-block{padding:13px}.ar{font-size:20px}}
 </style>
 </head>
 <body class="min-h-screen">
@@ -51,7 +64,7 @@ button:disabled{opacity:.55;cursor:not-allowed}
   <p id="researchStatus" class="text-sm whitespace-pre-line"></p>
   <div id="terms" class="flex flex-wrap gap-2"></div>
  </div>
- <div id="report" class="bg-white rounded-xl p-5 shadow-sm whitespace-pre-line text-sm"></div>
+ <div id="report" class="space-y-3"></div>
 </section>
 </main>
 <div id="toast" class="fixed bottom-4 right-4 bg-slate-900 text-white rounded-lg px-4 py-3 hidden"></div>
@@ -92,7 +105,14 @@ function collectTurath(x,out=[],depth=0){
  if(Array.isArray(x)){x.forEach(v=>collectTurath(v,out,depth+1));return out}
  if(typeof x==='object'){
   const txt=x.arabicText||x.arabic||x.text||x.pageText||x.page_text||x.passage||x.snippet||x.excerpt||x.content;
-  if(typeof txt==='string'&&txt.trim())out.push({source:'Turath',book:x.bookTitle||x.book_title||x.book||x.title||x.work||'Kitab Turath',author:x.authorName||x.author_name||x.author||'',where:[x.volume?'Jilid '+x.volume:'',x.page?'Halaman '+x.page:''].filter(Boolean).join(' / ')||x.location||x.reference||'Lokasi tidak tersedia',text:txt,url:x.url||x.sourceUrl||x.link||'',term:''});
+  if(typeof txt==='string'&&txt.trim()){
+   const meta=x.book&&typeof x.book==='object'?x.book:(x.metadata&&typeof x.metadata==='object'?x.metadata:{});
+   const book=x.bookTitle||x.book_title||x.bookName||x.book_name||x.kitab||x.title||x.work||meta.title||meta.name||(typeof x.book==='string'?x.book:'')||'Nama kitab tidak dikirim Turath';
+   const author=x.authorName||x.author_name||x.author||x.writer||meta.author||'';
+   const volume=x.volume||x.volumeNumber||x.volume_number||x.juz||x.juz_number||'';
+   const page=x.page||x.pageNumber||x.page_number||x.pageNo||x.printedPage||'';
+   out.push({source:'Turath',book:String(book),author:String(author),where:[volume?'Jilid '+volume:'',page?'Halaman '+page:''].filter(Boolean).join(' / ')||x.location||x.reference||x.tocPath||x.toc_path||'Lokasi tidak tersedia',text:txt,url:x.url||x.sourceUrl||x.source_url||x.link||'',term:'',bookId:x.bookId||x.book_id||meta.id||''});
+  }
   else ['results','passages','items','hits','matches','data','books'].forEach(k=>{if(x[k])collectTurath(x[k],out,depth+1)});
  }
  return out;
@@ -106,12 +126,15 @@ async function searchOne(term,which,scope='fiqh-comparative'){
  return {items,errors};
 }
 function render(items){
- $('results').innerHTML=items.map((x,i)=>`<article class="bg-white rounded-xl shadow-sm p-4 space-y-2">
- <div class="flex flex-wrap justify-between gap-2 text-xs text-teal-800"><b>${esc(x.source)}</b><span>${esc(x.where)}</span></div>
- <h3 class="font-bold">${esc(x.book)}</h3><p class="text-xs text-slate-500">${esc(x.author)}</p>
- <p class="ar text-xl text-slate-800">${esc(x.text)}</p>
- <div class="flex flex-wrap gap-3 text-xs"><button type="button" class="copy text-teal-700 underline" data-i="${i}">Salin ibarot</button>${/^https:\/\//.test(x.url)?`<a class="text-teal-700 underline" target="_blank" rel="noopener" href="${esc(x.url)}">Buka sumber</a>`:''}</div>
- </article>`).join('')||'<div class="bg-white p-5 rounded-xl">Tidak ada ibarot yang ditemukan.</div>';
+ $('results').innerHTML=items.map((x,i)=>`<article class="result-card space-y-3">
+  <div class="flex flex-wrap items-center justify-between gap-2"><span class="pill">${esc(x.source)}</span><span class="result-meta">${esc(x.where)}</span></div>
+  <div><h3 class="font-bold text-slate-800">${esc(x.book)}</h3><p class="result-meta mt-1">${esc(x.author||'Pengarang tidak dicantumkan')}</p></div>
+  <div class="ar text-[21px] text-slate-800 bg-slate-50 rounded-xl p-4">${esc(x.text)}</div>
+  <div class="flex flex-wrap items-center gap-4 text-xs">
+   <button type="button" class="copy font-semibold text-teal-700 underline" data-i="${i}">Salin ibarot</button>
+   ${/^https:\/\//.test(x.url)?`<a class="font-semibold text-teal-700 underline" target="_blank" rel="noopener" href="${esc(x.url)}">Buka kitab di Turath</a>`:''}
+  </div>
+ </article>`).join('')||'<div class="panel p-5 text-sm text-slate-500">Tidak ada ibarot yang ditemukan.</div>';
  $('results').querySelectorAll('.copy').forEach(b=>b.addEventListener('click',async()=>{const x=items[+b.dataset.i];try{await navigator.clipboard.writeText(x.text);toast('Ibarot disalin')}catch{toast('Gagal menyalin')}}));
 }
 $('searchBtn').addEventListener('click',async()=>{
@@ -134,6 +157,58 @@ function getTerms(d){
  const walk=(o,n=0)=>{if(!o||typeof o!=='object'||n>4)return;if(Array.isArray(o)){o.forEach(v=>walk(v,n+1));return}keys.forEach(k=>{const v=o[k];if(Array.isArray(v))found.push(...v);else if(typeof v==='string')found.push(...v.split(/[\n,;؛]/))});Object.values(o).forEach(v=>{if(v&&typeof v==='object')walk(v,n+1)})};
  walk(d);return [...new Set(found.map(v=>typeof v==='string'?v.trim():String(v?.termArabic||v?.term||v?.query||'').trim()).filter(v=>v&&/[\u0600-\u06FF]/.test(v)))].slice(0,8);
 }
+function renderTarjih(data,question,passages,ids){
+ const root=$('report');
+ const pick=(...keys)=>{for(const k of keys){const v=data?.[k];if(typeof v==='string'&&v.trim())return v.trim()}return ''};
+ const heading=(title,body)=>body?`<section class="report-block"><h3>${esc(title)}</h3><div class="text-sm leading-7 text-slate-700 whitespace-pre-line">${esc(body)}</div></section>`:'';
+ const evidenceFor=(raw)=>{
+  const key=String(raw??'').trim();
+  if(ids[key])return ids[key];
+  const n=Number(key.replace(/[^0-9]/g,''));
+  if(Number.isFinite(n)){
+   if(ids['p'+n])return ids['p'+n];
+   if(passages[n])return passages[n];
+   if(n>0&&passages[n-1])return passages[n-1];
+  }
+  return null;
+ };
+ const evidenceHtml=(refs)=>{
+  if(!Array.isArray(refs)||!refs.length)return '';
+  return `<div class="mt-3"><div class="eyebrow mb-2">Referensi ibarot</div><div class="space-y-2">${refs.map(ref=>{
+   const p=evidenceFor(ref);
+   return p?`<div class="quote-card"><div class="font-bold text-sm text-slate-800">${esc(p.book||'Nama kitab tidak tersedia')}</div><div class="result-meta mt-1">${esc(p.author||'')} · ${esc(p.source||'Sumber')} · ${esc(p.where||'Lokasi tidak tersedia')}</div><div class="ar text-base mt-2 text-slate-700">${esc(p.text||'')}</div></div>`:`<div class="text-xs text-slate-500">ID referensi: ${esc(ref)} (metadata kitab tidak ditemukan dalam hasil pencarian)</div>`;
+  }).join('')}</div></div>`;
+ };
+ const aqwal=Array.isArray(data?.aqwal)?data.aqwal:(Array.isArray(data?.opinions)?data.opinions:[]);
+ const aqwalHtml=aqwal.map((a,i)=>`<section class="report-block">
+  <div class="flex flex-wrap justify-between gap-2 mb-2"><h3 class="mb-0">Pendapat ${i+1} · ${esc(a.madhhab||a.school||'Pendapat ulama')}</h3><span class="pill">Pemetaan qaul</span></div>
+  ${a.position?`<p class="text-sm leading-7 text-slate-700">${esc(a.position)}</p>`:''}
+  ${a.explanation?`<p class="text-sm leading-7 text-slate-700 mt-2">${esc(a.explanation)}</p>`:''}
+  ${evidenceHtml(a.evidenceIds||a.evidence_ids||a.references||a.sources)}
+ </section>`).join('');
+ const summary=pick('tahrirMahallNiza','tahrirMahallNiza','tahrir','problemFraming');
+ const tashawwur=pick('tashawwur','description','problemDescription');
+ const dalil=pick('dalil','evidence','evidenceAnalysis');
+ const munaqasyah=pick('munaqasyah','discussion','criticalAnalysis');
+ const tarjih=pick('tarjih','preferredView','tarjihResult','conclusion');
+ const note=pick('notes','catatan','sourceAssessment');
+ root.innerHTML=`<div class="space-y-3">
+  <div class="rounded-2xl bg-gradient-to-br from-teal-800 to-cyan-900 text-white p-5">
+   <div class="text-xs font-bold tracking-widest text-teal-100 uppercase">Laporan riset fikih</div>
+   <h2 class="text-xl font-extrabold mt-2">${esc(question)}</h2>
+   <p class="text-xs text-teal-100 mt-2">${passages.length} ibarot berhasil dihimpun</p>
+  </div>
+  ${heading('Tashawwur al-mas’alah',tashawwur)}
+  ${heading('Tahrir mahal an-niza’',summary)}
+  ${aqwalHtml}
+  ${heading('Analisis dalil',dalil)}
+  ${heading('Munaqasyah',munaqasyah)}
+  ${heading('Kesimpulan / tarjih',tarjih)}
+  ${heading('Catatan sumber',note)}
+  ${!aqwalHtml&&!tashawwur&&!summary&&!dalil&&!munaqasyah&&!tarjih?heading('Hasil analisis',JSON.stringify(data,null,2)):''}
+  <p class="text-xs text-slate-500 px-1">Rujukan kitab dan halaman ditampilkan berdasarkan metadata yang dikirim sumber Turath/Shamela. Tetap cocokkan kutipan dengan halaman kitab aslinya.</p>
+ </div>`;
+}
 $('researchBtn').addEventListener('click',async()=>{
  const question=$('question').value.trim(),which={shamela:$('rShamela').checked,turath:$('rTurath').checked},madhhab=$('madhhab').value;
  if(!question){toast('Tuliskan masalah fikih terlebih dahulu.');return}
@@ -150,8 +225,9 @@ $('researchBtn').addEventListener('click',async()=>{
   const seen=new Set();passages=passages.filter(p=>p.text&&!seen.has(p.text.replace(/\s/g,'').slice(0,250))&&seen.add(p.text.replace(/\s/g,'').slice(0,250)));
   if(!passages.length)throw Error('Tidak ditemukan ibarot.\n'+errors.join('\n'));
   status('researchStatus','Ditemukan '+passages.length+' ibarot. Tahap 3/3: menyusun analisis...');
-  const report=await ai('tarjih',{question,searchTerms:terms,passages:passages.map((p,i)=>({id:'p'+i,book:p.book,author:p.author,madhhab:p.source,page:p.where,arabicText:p.text,sourceUrl:p.url,searchTerm:p.term}))});
-  $('report').textContent=typeof report==='string'?report:JSON.stringify(report,null,2);
+  const passageIds={};
+  const report=await ai('tarjih',{question,searchTerms:terms,passages:passages.map((p,i)=>{const id='p'+i;passageIds[id]=p;passageIds['p'+(i+1)]=passageIds['p'+(i+1)]||p;return {id,book:p.book,author:p.author,madhhab:p.source,page:p.where,arabicText:p.text,sourceUrl:p.url,searchTerm:p.term}})});
+  renderTarjih(report,question,passages,passageIds);
   render(passages);status('researchStatus','Selesai. '+passages.length+' ibarot ditemukan.'+(errors.length?'\nSebagian pencarian gagal:\n'+errors.join('\n'):''));
  }catch(e){status('researchStatus','Proses belum selesai: '+e.message,true);toast('Riset gagal')}
  finally{b.disabled=false;b.textContent='Mulai Riset & Tarjih'}
