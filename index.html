@@ -1035,17 +1035,53 @@ function renderResearchTerms(terms) {
  ).join('');
 }
 
+function wait(ms) {
+ return new Promise(resolve => setTimeout(resolve, ms));
+}
+
 async function fetchShamelaForTerm(term, scope) {
- const response = await fetch(SHAMELA_API, {
-  method:'POST',
-  headers:{'Content-Type':'application/json','Accept':'application/json, text/event-stream'},
-  body:JSON.stringify({query:term, scope, limit:5})
- });
- const raw = await response.text();
- if (!response.ok) throw new Error('Pencarian "'+term+'" gagal (HTTP '+response.status+'): '+raw.slice(0,180));
+ // Satu percobaan untuk 429: jangan mengulang permintaan yang sudah ditolak.
+ // Beberapa versi Worker lama membungkus upstream 429 sebagai HTTP 502,
+ // sehingga status di dalam body juga harus diperiksa.
+ let response;
+ let raw = '';
+ for (let attempt = 0; attempt < 2; attempt++) {
+  response = await fetch(SHAMELA_API, {
+   method:'POST',
+   headers:{'Content-Type':'application/json','Accept':'application/json, text/event-stream'},
+   body:JSON.stringify({query:term, scope, limit:5})
+  });
+  raw = await response.text();
+
+  let errorBody = null;
+  if (!response.ok) {
+   try { errorBody = JSON.parse(raw); } catch (_) {}
+   const upstreamStatus = Number(errorBody?.status || errorBody?.error?.upstreamStatus || 0);
+   if (response.status === 429 || upstreamStatus === 429) {
+    const limited = new Error('Shamela sedang membatasi permintaan (HTTP 429). Pencarian dihentikan agar tidak menambah pembatasan. Tunggu beberapa saat, lalu coba satu pencarian dahulu.');
+    limited.rateLimited = true;
+    throw limited;
+   }
+   if ([502,503,504].includes(response.status) && attempt === 0) {
+    await wait(3000);
+    continue;
+   }
+   throw new Error('Pencarian "'+term+'" gagal (HTTP '+response.status+'): '+raw.slice(0,220));
+  }
+  break;
+ }
+
  let envelope;
  try { envelope = JSON.parse(raw); } catch (_) { throw new Error('Respons Shamela untuk kata kunci "'+term+'" bukan JSON.'); }
- if (envelope.error) throw new Error(envelope.error.message || String(envelope.error));
+ if (envelope.error) {
+  const upstreamStatus = Number(envelope.status || envelope.error?.status || envelope.error?.upstreamStatus || 0);
+  if (upstreamStatus === 429) {
+   const limited = new Error('Shamela sedang membatasi permintaan (HTTP 429). Pencarian dihentikan agar tidak menambah pembatasan. Tunggu beberapa saat, lalu coba satu pencarian dahulu.');
+   limited.rateLimited = true;
+   throw limited;
+  }
+  throw new Error(envelope.error.message || String(envelope.error));
+ }
  const rpc = envelope.result || envelope;
  if (rpc.isError) {
   const msg = (rpc.content || []).map(x=>x.text || '').join('\n');
@@ -1227,14 +1263,22 @@ window.researchAndTarjih = async function() {
   let failures = [];
   if (useWeb) {
    setResearchStatus('Tahap 2/3: Mencari ibarot Shamela dengan '+terms.length+' kata kunci Arab...');
-   // Mode cepat: jalankan seluruh kata kunci secara paralel seperti versi awal.
-   const settled = await Promise.allSettled(
-    terms.map(term => fetchShamelaForTerm(term,scopes[madhhab] || 'fiqh-comparative'))
-   );
-   settled.forEach((result,i) => {
-    if (result.status === 'fulfilled') passages.push(...result.value);
-    else failures.push(terms[i]+': '+(result.reason?.message || String(result.reason)));
-   });
+   // Antrean serial dengan jeda. Jika server mengirim 429, hentikan seluruh
+   // antrean: jangan mengirim kata kunci berikutnya ke layanan yang sedang membatasi.
+   for (let i=0; i<terms.length; i++) {
+    const term = terms[i];
+    try {
+     const found = await fetchShamelaForTerm(term, scopes[madhhab] || 'fiqh-comparative');
+     passages.push(...found);
+    } catch (error) {
+     failures.push(term+': '+(error.message || String(error)));
+     if (error.rateLimited) break;
+    }
+    if (i < terms.length - 1) await wait(5000);
+   }
+   if (failures.some(message => message.includes('HTTP 429'))) {
+    throw new Error('Pencarian dihentikan karena server Shamela membatasi permintaan (HTTP 429). Ini bukan berarti ibarot tidak ada. Tunggu 15–30 menit sebelum mencoba lagi, dan mulai dengan satu kata kunci.\n\nRincian: '+failures.join('\n'));
+   }
   }
   if (usePDF) {
    for (const term of terms) passages.push(...searchLocalPDF(term));
