@@ -6,61 +6,63 @@
 <title>Cari Ibarot</title>
 <script src="https://cdn.tailwindcss.com"></script>
 <style>
-:root{color-scheme:light}
-body{font-family:Inter,system-ui,-apple-system,sans-serif;background:#f3f7f8;color:#243746}
-.ar{font-family:Georgia,'Times New Roman',serif;direction:rtl;line-height:2.15}
-button{transition:background .18s,transform .18s}
-button:active{transform:scale(.985)}
-button:disabled{opacity:.55;cursor:not-allowed}
-.hidden{display:none!important}
-.panel{background:#fff;border:1px solid #e1eaec;border-radius:18px;box-shadow:0 5px 22px #153b4b0a}
-.eyebrow{font-size:11px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;color:#0b7184}
-.section-title{font-size:17px;font-weight:800;color:#183b49}
-.result-card{background:white;border:1px solid #dce8ea;border-radius:16px;padding:17px;box-shadow:0 4px 16px #163c4a08}
-.result-meta{font-size:12px;color:#647782}
-.report-block{background:#fff;border:1px solid #dce8ea;border-radius:15px;padding:16px}
-.report-block h3{font-size:15px;font-weight:800;color:#075b70;margin-bottom:8px}
-.quote-card{background:#f8fbfb;border:1px solid #e0ebed;border-radius:13px;padding:13px;margin-top:9px}
-.pill{display:inline-flex;align-items:center;border-radius:999px;background:#e8f5f6;color:#075b70;padding:4px 10px;font-size:11px;font-weight:700}
-@media(max-width:480px){main{padding:12px!important}.result-card,.report-block{padding:13px}.ar{font-size:20px}}
+:root{color-scheme:light;--ink:#18343d;--muted:#647982;--line:#dce8e9;--paper:#f4f8f8}
+*{box-sizing:border-box}body{font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;background:var(--paper);color:var(--ink);margin:0}
+button,textarea,select{font:inherit}button{transition:background .18s,transform .18s,box-shadow .18s}button:active{transform:translateY(1px)}button:disabled{opacity:.55;cursor:not-allowed}.hidden{display:none!important}
+.ar{font-family:"Noto Naskh Arabic","Amiri",Georgia,"Times New Roman",serif;direction:rtl;text-align:right;line-height:2.05;unicode-bidi:plaintext}
+.site-header{background:linear-gradient(115deg,#104b55,#087783);color:#fff;box-shadow:0 8px 28px #103e4918}.shell{width:min(100% - 32px,960px);margin-inline:auto}main{padding-block:26px 48px}
+.panel{background:#fff;border:1px solid var(--line);border-radius:20px;box-shadow:0 8px 28px #183e4808}.panel-pad{padding:clamp(17px,3vw,26px)}
+.eyebrow{font-size:10px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:#0b7180}.section-title{font-size:clamp(18px,2.5vw,21px);font-weight:800;color:#173e49}
+.field{width:100%;border:1px solid #cbdcde;border-radius:12px;background:#fbfdfd;padding:13px 14px;color:#18343d;outline:none;transition:border .15s,box-shadow .15s}.field:focus{border-color:#16808b;box-shadow:0 0 0 3px #16808b18}.field::placeholder{color:#9aabad}
+.primary-btn,.gold-btn{border-radius:12px;padding:12px 19px;font-weight:750;box-shadow:0 5px 14px #0d687422}.primary-btn{background:#0d6874;color:white}.primary-btn:hover{background:#095661}.gold-btn{background:#a96516;color:#fff}.gold-btn:hover{background:#8d5010}
+.tab{padding:9px 14px;border-radius:10px;font-size:13px;font-weight:700;color:#d8eff0}.tab.active{background:#ffffff25;color:#fff;box-shadow:inset 0 0 0 1px #ffffff25}
+.source-option{display:inline-flex;align-items:center;gap:7px;padding:8px 11px;border:1px solid var(--line);border-radius:10px;background:#f8fbfb;font-size:13px;font-weight:600;color:#35515a}.source-option input{accent-color:#0d6874;width:15px;height:15px}
+.status{font-size:13px;line-height:1.6;color:var(--muted);white-space:pre-line}.status.error{color:#b42318}
+.result-card,.report-block{background:#fff;border:1px solid var(--line);border-radius:17px;padding:clamp(15px,2.5vw,21px);box-shadow:0 5px 18px #183e4807}.result-meta{font-size:12px;line-height:1.6;color:var(--muted)}
+.report-block h3{font-size:15px;font-weight:850;color:#075b68;margin:0 0 10px}.report-text{font-size:14px;line-height:1.9;color:#40565e;white-space:pre-line;overflow-wrap:anywhere}
+.quote-card{background:#f7fbfb;border:1px solid #dce9e9;border-radius:13px;padding:14px;margin-top:10px}.book-title{font-size:14px;font-weight:850;color:#174b55;line-height:1.6}.book-meta{font-size:12px;line-height:1.7;color:#71838a;margin-top:3px}.ar-quote{font-size:20px;color:#233f47;margin-top:12px;padding:12px 4px 2px;border-top:1px solid #e1ebeb}
+.pill{display:inline-flex;align-items:center;border-radius:999px;background:#e8f4f4;color:#075b68;padding:5px 10px;font-size:11px;font-weight:800}
+.report-hero{background:linear-gradient(125deg,#104b55,#087783);color:white;border-radius:20px;padding:clamp(18px,3vw,26px);box-shadow:0 10px 26px #104b551c}.report-hero h2{font-size:clamp(19px,3vw,25px);font-weight:850;line-height:1.55;margin-top:9px}.report-hero p{font-size:12px;color:#d3eeee;margin-top:8px}.opinion-label{font-size:11px;font-weight:800;color:#0b7180;letter-spacing:.05em;text-transform:uppercase}
+#toast{z-index:50;max-width:calc(100% - 32px);box-shadow:0 8px 24px #102f3840}
+@media(max-width:560px){.shell{width:min(100% - 22px,960px)}main{padding-top:14px}.ar{font-size:20px}.tab{padding:8px 10px;font-size:12px}}
 </style>
 </head>
 <body class="min-h-screen">
-<header class="bg-teal-800 text-white p-4 shadow">
- <div class="max-w-5xl mx-auto flex flex-wrap items-center justify-between gap-3">
+<header class="site-header px-4 py-4">
+ <div class="shell flex flex-wrap items-center justify-between gap-3">
   <div><h1 class="text-2xl font-bold">Cari Ibarot</h1><p class="text-sm text-teal-100">Pencari referensi kitab turats</p></div>
   <nav class="flex gap-2">
-   <button type="button" data-tab="search" class="tab px-3 py-2 rounded bg-white/20">Cari Ibarot</button>
-   <button type="button" data-tab="research" class="tab px-3 py-2 rounded">Riset & Tarjih</button>
+   <button type="button" data-tab="search" class="tab active">Cari Ibarot</button>
+   <button type="button" data-tab="research" class="tab">Riset & Tarjih</button>
   </nav>
  </div>
 </header>
-<main class="max-w-5xl mx-auto p-4 space-y-4">
+<main class="shell space-y-5">
 <section id="page-search" class="space-y-4">
- <div class="bg-white rounded-xl shadow-sm p-5 space-y-4">
+ <div class="panel panel-pad space-y-4">
   <h2 class="font-bold text-lg">Pencarian langsung</h2>
   <label for="query" class="text-sm font-medium">Kata kunci Arab</label>
-  <textarea id="query" rows="3" class="w-full border rounded-lg p-3" placeholder="Contoh: بيع الغرر"></textarea>
+  <textarea id="query" rows="3" class="field" placeholder="Contoh: بيع الغرر"></textarea>
   <div class="flex flex-wrap gap-4 text-sm">
    <label><input id="shamela" type="checkbox" checked> Shamela</label>
    <label><input id="turath" type="checkbox" checked> Turath</label>
   </div>
-  <button type="button" id="searchBtn" class="bg-teal-700 text-white rounded-lg px-5 py-3 font-semibold">Cari Ibarot</button>
+  <button type="button" id="searchBtn" class="primary-btn">Cari Ibarot</button>
   <p id="searchStatus" class="text-sm whitespace-pre-line"></p>
  </div>
  <div id="results" class="space-y-3"></div>
 </section>
 <section id="page-research" class="hidden space-y-4">
- <div class="bg-white rounded-xl shadow-sm p-5 space-y-4">
+ <div class="panel panel-pad space-y-4">
   <h2 class="font-bold text-lg">Riset fikih & tarjih</h2>
   <label for="question" class="text-sm font-medium">Masalah yang ingin dikaji</label>
-  <textarea id="question" rows="3" class="w-full border rounded-lg p-3" placeholder="Contoh: Hukum menyewakan tanah untuk pertanian menurut empat madzhab"></textarea>
+  <textarea id="question" rows="3" class="field" placeholder="Contoh: Hukum menyewakan tanah untuk pertanian menurut empat madzhab"></textarea>
   <label class="text-sm">Madzhab</label>
-  <select id="madhhab" class="border rounded-lg p-2 w-full">
+  <select id="madhhab" class="field">
    <option value="all">Perbandingan empat madzhab</option><option value="syafii">Syafi'i</option><option value="hanafi">Hanafi</option><option value="maliki">Maliki</option><option value="hambali">Hanbali</option>
   </select>
   <div class="flex flex-wrap gap-4 text-sm"><label><input id="rShamela" type="checkbox" checked> Shamela</label><label><input id="rTurath" type="checkbox" checked> Turath</label></div>
-  <button type="button" id="researchBtn" class="bg-amber-600 text-white rounded-lg px-5 py-3 font-semibold">Mulai Riset & Tarjih</button>
+  <button type="button" id="researchBtn" class="gold-btn">Mulai Riset & Tarjih</button>
   <p id="researchStatus" class="text-sm whitespace-pre-line"></p>
   <div id="terms" class="flex flex-wrap gap-2"></div>
  </div>
@@ -83,7 +85,7 @@ document.querySelectorAll('[data-tab]').forEach(b=>b.addEventListener('click',()
  const tab=b.dataset.tab;
  $('page-search').classList.toggle('hidden',tab!=='search');
  $('page-research').classList.toggle('hidden',tab!=='research');
- document.querySelectorAll('[data-tab]').forEach(x=>x.classList.toggle('bg-white/20',x===b));
+ document.querySelectorAll('[data-tab]').forEach(x=>x.classList.toggle('active',x===b));
 }));
 async function post(url,body){
  const r=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json','Accept':'application/json'},body:JSON.stringify(body)});
@@ -107,10 +109,10 @@ function collectTurath(x,out=[],depth=0){
   const txt=x.arabicText||x.arabic||x.text||x.pageText||x.page_text||x.passage||x.snippet||x.excerpt||x.content;
   if(typeof txt==='string'&&txt.trim()){
    const meta=x.book&&typeof x.book==='object'?x.book:(x.metadata&&typeof x.metadata==='object'?x.metadata:{});
-   const book=x.bookTitle||x.book_title||x.bookName||x.book_name||x.kitab||x.title||x.work||meta.title||meta.name||(typeof x.book==='string'?x.book:'')||'Nama kitab tidak dikirim Turath';
-   const author=x.authorName||x.author_name||x.author||x.writer||meta.author||'';
-   const volume=x.volume||x.volumeNumber||x.volume_number||x.juz||x.juz_number||'';
-   const page=x.page||x.pageNumber||x.page_number||x.pageNo||x.printedPage||'';
+   const book=x.bookTitle||x.book_title||x.bookName||x.book_name||x.kitab||x.title||x.work||meta.title||meta.name||(typeof x.book==='string'?x.book:'')||x.book_name_ar||x.workTitle||'Nama kitab tidak dikirim Turath';
+   const author=x.authorName||x.author_name||x.author||x.writer||meta.author||meta.authorName||x.musannif||'';
+   const volume=x.volume||x.volumeNumber||x.volume_number||x.juz||x.juz_number||x.vol||'';
+   const page=x.page||x.pageNumber||x.page_number||x.pageNo||x.printedPage||x.pageno||'';
    out.push({source:'Turath',book:String(book),author:String(author),where:[volume?'Jilid '+volume:'',page?'Halaman '+page:''].filter(Boolean).join(' / ')||x.location||x.reference||x.tocPath||x.toc_path||'Lokasi tidak tersedia',text:txt,url:x.url||x.sourceUrl||x.source_url||x.link||'',term:'',bookId:x.bookId||x.book_id||meta.id||''});
   }
   else ['results','passages','items','hits','matches','data','books'].forEach(k=>{if(x[k])collectTurath(x[k],out,depth+1)});
@@ -157,56 +159,70 @@ function getTerms(d){
  const walk=(o,n=0)=>{if(!o||typeof o!=='object'||n>4)return;if(Array.isArray(o)){o.forEach(v=>walk(v,n+1));return}keys.forEach(k=>{const v=o[k];if(Array.isArray(v))found.push(...v);else if(typeof v==='string')found.push(...v.split(/[\n,;؛]/))});Object.values(o).forEach(v=>{if(v&&typeof v==='object')walk(v,n+1)})};
  walk(d);return [...new Set(found.map(v=>typeof v==='string'?v.trim():String(v?.termArabic||v?.term||v?.query||'').trim()).filter(v=>v&&/[\u0600-\u06FF]/.test(v)))].slice(0,8);
 }
+function unwrapReport(value){
+ let d=value;
+ for(let i=0;i<5;i++){
+  if(typeof d==='string'){try{d=JSON.parse(d);continue}catch{return {conclusion:d}}}
+  if(!d||typeof d!=='object'||Array.isArray(d))break;
+  if(d.aqwal||d.opinions||d.tashawwur||d.tahrirMahallNiza||d.tarjih||d.conclusion)break;
+  const next=d.data??d.result??d.analysis??d.report??d.output;
+  if(next===undefined||next===d)break;
+  d=next;
+ }
+ return d&&typeof d==='object'?d:{conclusion:String(d??'')};
+}
 function renderTarjih(data,question,passages,ids){
- const root=$('report');
- const pick=(...keys)=>{for(const k of keys){const v=data?.[k];if(typeof v==='string'&&v.trim())return v.trim()}return ''};
- const heading=(title,body)=>body?`<section class="report-block"><h3>${esc(title)}</h3><div class="text-sm leading-7 text-slate-700 whitespace-pre-line">${esc(body)}</div></section>`:'';
- const evidenceFor=(raw)=>{
+ const root=$('report'),d=unwrapReport(data);
+ const pick=(...keys)=>{for(const k of keys){const v=d?.[k];if(typeof v==='string'&&v.trim())return v.trim();if(Array.isArray(v)&&v.length)return v.map(x=>typeof x==='string'?x:JSON.stringify(x)).join('\\n')}return ''};
+ const heading=(title,body)=>body?`<section class="report-block"><h3>${esc(title)}</h3><div class="report-text">${esc(body)}</div></section>`:'';
+ const evidenceFor=raw=>{
   const key=String(raw??'').trim();
-  if(ids[key])return ids[key];
-  const n=Number(key.replace(/[^0-9]/g,''));
-  if(Number.isFinite(n)){
-   if(ids['p'+n])return ids['p'+n];
-   if(passages[n])return passages[n];
-   if(n>0&&passages[n-1])return passages[n-1];
-  }
-  return null;
+  if(Object.prototype.hasOwnProperty.call(ids,key))return ids[key];
+  const n=Number(key.replace(/^p/i,''));
+  if(/^p\\d+$/i.test(key)&&Number.isInteger(n))return passages[n]||null;
+  if(/^\\d+$/.test(key)&&Number.isInteger(n))return passages[n]||passages[n-1]||null;
+  return passages.find(p=>p.id===key||p.sourceId===key)||null;
  };
- const evidenceHtml=(refs)=>{
-  if(!Array.isArray(refs)||!refs.length)return '';
-  return `<div class="mt-3"><div class="eyebrow mb-2">Referensi ibarot</div><div class="space-y-2">${refs.map(ref=>{
-   const p=evidenceFor(ref);
-   return p?`<div class="quote-card"><div class="font-bold text-sm text-slate-800">${esc(p.book||'Nama kitab tidak tersedia')}</div><div class="result-meta mt-1">${esc(p.author||'')} · ${esc(p.source||'Sumber')} · ${esc(p.where||'Lokasi tidak tersedia')}</div><div class="ar text-base mt-2 text-slate-700">${esc(p.text||'')}</div></div>`:`<div class="text-xs text-slate-500">ID referensi: ${esc(ref)} (metadata kitab tidak ditemukan dalam hasil pencarian)</div>`;
+ const refsOf=a=>a.evidenceIds||a.evidence_ids||a.references||a.sources||a.evidence||[];
+ const evidenceHtml=refs=>{
+  if(!Array.isArray(refs))refs=typeof refs==='string'?refs.split(/[;,\\s]+/).filter(Boolean):[];
+  if(!refs.length)return '';
+  return `<div class="mt-4"><div class="eyebrow mb-2">Kitab dan sumber rujukan</div><div>${refs.map(ref=>{
+   const p=evidenceFor(typeof ref==='object'?(ref.id||ref.refId||ref.sourceId):ref);
+   if(!p)return `<div class="quote-card text-xs text-slate-500">ID referensi ${esc(typeof ref==='object'?(ref.id||ref.refId||'tidak diketahui'):ref)} tidak cocok dengan hasil pencarian.</div>`;
+   const book=p.book||p.bookTitle||p.title||'Nama kitab tidak tersedia dari sumber';
+   const author=p.author||p.authorName||'Pengarang tidak dicantumkan oleh sumber';
+   const where=p.where||p.location||'Jilid/halaman tidak tersedia';
+   return `<article class="quote-card">
+    <div class="flex flex-wrap items-center justify-between gap-2"><span class="pill">${esc(p.source||'Sumber')}</span><span class="result-meta">${esc(where)}</span></div>
+    <div class="book-title mt-2">${esc(book)}</div><div class="book-meta">${esc(author)}</div>
+    ${p.text?`<div class="ar ar-quote">${esc(p.text)}</div>`:''}
+    ${String(p.url||'').startsWith('https://')?`<a class="inline-block mt-3 text-xs font-bold text-teal-700 underline" target="_blank" rel="noopener" href="${esc(p.url)}">Buka referensi asli</a>`:''}
+   </article>`;
   }).join('')}</div></div>`;
  };
- const aqwal=Array.isArray(data?.aqwal)?data.aqwal:(Array.isArray(data?.opinions)?data.opinions:[]);
+ const aqwal=Array.isArray(d.aqwal)?d.aqwal:(Array.isArray(d.opinions)?d.opinions:[]);
  const aqwalHtml=aqwal.map((a,i)=>`<section class="report-block">
-  <div class="flex flex-wrap justify-between gap-2 mb-2"><h3 class="mb-0">Pendapat ${i+1} · ${esc(a.madhhab||a.school||'Pendapat ulama')}</h3><span class="pill">Pemetaan qaul</span></div>
-  ${a.position?`<p class="text-sm leading-7 text-slate-700">${esc(a.position)}</p>`:''}
-  ${a.explanation?`<p class="text-sm leading-7 text-slate-700 mt-2">${esc(a.explanation)}</p>`:''}
-  ${evidenceHtml(a.evidenceIds||a.evidence_ids||a.references||a.sources)}
+  <div class="flex flex-wrap items-center justify-between gap-2 mb-3"><div class="opinion-label">Pendapat ${i+1}</div><span class="pill">${esc(a.madhhab||a.school||a.label||'Pendapat ulama')}</span></div>
+  ${a.position||a.opinion||a.view?`<div class="report-text">${esc(a.position||a.opinion||a.view)}</div>`:''}
+  ${a.explanation||a.reasoning?`<div class="report-text mt-3">${esc(a.explanation||a.reasoning)}</div>`:''}
+  ${evidenceHtml(refsOf(a))}
  </section>`).join('');
- const summary=pick('tahrirMahallNiza','tahrirMahallNiza','tahrir','problemFraming');
- const tashawwur=pick('tashawwur','description','problemDescription');
+ const tashawwur=pick('tashawwur','description','problemDescription','tasawwur');
+ const tahrir=pick('tahrirMahallNiza','tahrir','problemFraming','mahallNiza');
  const dalil=pick('dalil','evidence','evidenceAnalysis');
  const munaqasyah=pick('munaqasyah','discussion','criticalAnalysis');
- const tarjih=pick('tarjih','preferredView','tarjihResult','conclusion');
+ const tarjih=pick('tarjih','preferredView','tarjihResult');
+ const conclusion=pick('conclusion','kesimpulan','summary');
  const note=pick('notes','catatan','sourceAssessment');
- root.innerHTML=`<div class="space-y-3">
-  <div class="rounded-2xl bg-gradient-to-br from-teal-800 to-cyan-900 text-white p-5">
-   <div class="text-xs font-bold tracking-widest text-teal-100 uppercase">Laporan riset fikih</div>
-   <h2 class="text-xl font-extrabold mt-2">${esc(question)}</h2>
-   <p class="text-xs text-teal-100 mt-2">${passages.length} ibarot berhasil dihimpun</p>
-  </div>
-  ${heading('Tashawwur al-mas’alah',tashawwur)}
-  ${heading('Tahrir mahal an-niza’',summary)}
-  ${aqwalHtml}
-  ${heading('Analisis dalil',dalil)}
-  ${heading('Munaqasyah',munaqasyah)}
-  ${heading('Kesimpulan / tarjih',tarjih)}
-  ${heading('Catatan sumber',note)}
-  ${!aqwalHtml&&!tashawwur&&!summary&&!dalil&&!munaqasyah&&!tarjih?heading('Hasil analisis',JSON.stringify(data,null,2)):''}
-  <p class="text-xs text-slate-500 px-1">Rujukan kitab dan halaman ditampilkan berdasarkan metadata yang dikirim sumber Turath/Shamela. Tetap cocokkan kutipan dengan halaman kitab aslinya.</p>
+ const generic=pick('answer','resultText','analysisText');
+ root.innerHTML=`<div class="space-y-4">
+  <div class="report-hero"><div class="text-[10px] font-extrabold tracking-[.16em] text-teal-100 uppercase">Laporan riset fikih</div><h2>${esc(question)}</h2><p>${passages.length} ibarot berhasil dihimpun dari sumber yang dipilih</p></div>
+  ${heading('Tashawwur al-Mas’alah',tashawwur)}${heading('Tahrir Mahall an-Niza’',tahrir)}
+  ${aqwalHtml?`<div class="space-y-3"><h3 class="section-title px-1">Pemetaan Pendapat Ulama</h3>${aqwalHtml}</div>`:''}
+  ${heading('Analisis Dalil',dalil)}${heading('Munaqasyah',munaqasyah)}${heading('Hasil Tarjih',tarjih)}${heading('Kesimpulan',conclusion)}${heading('Catatan Sumber',note)}
+  ${!aqwalHtml&&!tashawwur&&!tahrir&&!dalil&&!munaqasyah&&!tarjih&&!conclusion?heading('Hasil Analisis',generic||JSON.stringify(d,null,2)):''}
+  <p class="text-xs leading-6 text-slate-500 px-1">Nama kitab, pengarang, jilid, dan halaman ditampilkan sesuai metadata yang dikirim oleh sumber. Jika metadata tidak tersedia, aplikasi tidak mengarang informasi.</p>
  </div>`;
 }
 $('researchBtn').addEventListener('click',async()=>{
@@ -226,7 +242,7 @@ $('researchBtn').addEventListener('click',async()=>{
   if(!passages.length)throw Error('Tidak ditemukan ibarot.\n'+errors.join('\n'));
   status('researchStatus','Ditemukan '+passages.length+' ibarot. Tahap 3/3: menyusun analisis...');
   const passageIds={};
-  const report=await ai('tarjih',{question,searchTerms:terms,passages:passages.map((p,i)=>{const id='p'+i;passageIds[id]=p;passageIds['p'+(i+1)]=passageIds['p'+(i+1)]||p;return {id,book:p.book,author:p.author,madhhab:p.source,page:p.where,arabicText:p.text,sourceUrl:p.url,searchTerm:p.term}})});
+  const report=await ai('tarjih',{question,searchTerms:terms,passages:passages.map((p,i)=>{const id='p'+i;passageIds[id]=p;return {id,book:p.book,author:p.author,madhhab:p.source,page:p.where,arabicText:p.text,sourceUrl:p.url,searchTerm:p.term}})});
   renderTarjih(report,question,passages,passageIds);
   render(passages);status('researchStatus','Selesai. '+passages.length+' ibarot ditemukan.'+(errors.length?'\nSebagian pencarian gagal:\n'+errors.join('\n'):''));
  }catch(e){status('researchStatus','Proses belum selesai: '+e.message,true);toast('Riset gagal')}
