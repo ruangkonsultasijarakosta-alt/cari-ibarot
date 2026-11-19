@@ -1035,14 +1035,29 @@ function renderResearchTerms(terms) {
  ).join('');
 }
 
+function wait(ms) {
+ return new Promise(resolve => setTimeout(resolve, ms));
+}
+
 async function fetchShamelaForTerm(term, scope) {
- const response = await fetch(SHAMELA_API, {
-  method:'POST',
-  headers:{'Content-Type':'application/json','Accept':'application/json, text/event-stream'},
-  body:JSON.stringify({query:term, scope, limit:5})
- });
- const raw = await response.text();
- if (!response.ok) throw new Error('Pencarian "'+term+'" gagal (HTTP '+response.status+'): '+raw.slice(0,180));
+ let response;
+ let raw = '';
+ // Coba ulang jika layanan Shamela sedang membatasi permintaan (429)
+ // atau gateway sementara gagal (502/503/504).
+ for (let attempt = 0; attempt < 4; attempt++) {
+  response = await fetch(SHAMELA_API, {
+   method:'POST',
+   headers:{'Content-Type':'application/json','Accept':'application/json, text/event-stream'},
+   body:JSON.stringify({query:term, scope, limit:5})
+  });
+  raw = await response.text();
+  if (response.ok) break;
+  const retryable = [429, 502, 503, 504].includes(response.status);
+  if (!retryable || attempt === 3) {
+   throw new Error('Pencarian "'+term+'" gagal (HTTP '+response.status+'): '+raw.slice(0,180));
+  }
+  await wait(2500 * (attempt + 1));
+ }
  let envelope;
  try { envelope = JSON.parse(raw); } catch (_) { throw new Error('Respons Shamela untuk kata kunci "'+term+'" bukan JSON.'); }
  if (envelope.error) throw new Error(envelope.error.message || String(envelope.error));
@@ -1227,14 +1242,17 @@ window.researchAndTarjih = async function() {
   let failures = [];
   if (useWeb) {
    setResearchStatus('Tahap 2/3: Mencari ibarot Shamela dengan '+terms.length+' kata kunci Arab...');
-   // Jalankan secara berkelompok agar tidak membanjiri Worker pencarian.
-   for (let i=0; i<terms.length; i+=3) {
-    const group = terms.slice(i,i+3);
-    const settled = await Promise.allSettled(group.map(term => fetchShamelaForTerm(term,scopes[madhhab] || 'fiqh-comparative')));
-    settled.forEach((result,j) => {
-     if (result.status === 'fulfilled') passages.push(...result.value);
-     else failures.push(group[j]+': '+result.reason.message);
-    });
+   // Jalankan satu per satu dengan jeda agar tidak memicu rate limit Shamela.
+   for (let i=0; i<terms.length; i++) {
+    const term = terms[i];
+    try {
+     const found = await fetchShamelaForTerm(term, scopes[madhhab] || 'fiqh-comparative');
+     passages.push(...found);
+    } catch (error) {
+     failures.push(term+': '+(error.message || String(error)));
+    }
+    // Jeda antarpencarian, termasuk setelah percobaan gagal.
+    if (i < terms.length - 1) await wait(1800);
    }
   }
   if (usePDF) {
